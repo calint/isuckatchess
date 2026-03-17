@@ -105,7 +105,7 @@
       <select id="gameList" size="5"></select>
       <hr>
       <h2>2. Settings</h2>
-      <label>Threshold (CP): <input id="margin" type="number" value="150"></label>
+      <label>Threshold (CP): <input id="margin" type="number" value="100"></label>
       <button id="btnAnalyze">Analyze & Find First Blindspot</button>
       <div id="log">Ready.</div>
     </section>
@@ -115,6 +115,9 @@
       <div id="hint">Select a puzzle to begin...</div>
       <div id="board"></div>
       <button id="btnSolution" style="display:none">Show Solution</button>
+      <div id="solutionText"
+        style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 8px; display: none; border: 1px solid #0b4a6f;">
+      </div>
       <div id="puzzles"></div>
     </section>
   </main>
@@ -168,29 +171,8 @@
     }
 
     /**
-     * Promisified engine evaluation.
-     */
-    function evaluate(fen, depth) {
-      return new Promise(async (resolve) => {
-        const engine = await get_engine();
-        const onMsg = (e) => {
-          if (e.data.startsWith("info depth") && e.data.includes("score cp")) {
-            const match = e.data.match(/score cp (-?\d+)/);
-            if (match) resolve(parseInt(match[1]));
-          }
-          if (e.data.startsWith("bestmove")) {
-            engine.removeEventListener("message", onMsg);
-          }
-        };
-        engine.addEventListener("message", onMsg);
-        engine.postMessage(`position fen ${fen}`);
-        engine.postMessage(`go depth ${depth}`);
-      });
-    }
-
-    /**
-     * Chess.com data fetching.
-     */
+      * Chess.com data fetching.
+      */
     async function load_archives() {
       const user = document.getElementById('player').value;
       try {
@@ -239,58 +221,151 @@
       const gList = document.getElementById('gameList');
       gList.innerHTML = "";
       data.games.forEach((g, i) => {
-        const opt = new Option(`${new Date(g.end_time * 1000).toLocaleDateString()} vs ${g.white.username === u ? g.black.username : g.white.username}`, i);
+        // Change the display string to White vs Black
+        const dateStr = new Date(g.end_time * 1000).toLocaleDateString();
+        const matchup = `${g.white.username} vs ${g.black.username}`;
+        const opt = new Option(`${dateStr}: ${matchup}`, i);
+
         opt.dataset.pgn = g.pgn;
         gList.add(opt);
       });
     };
 
     /**
-     * Main analysis logic: stop at first significant eval change.
-     */
+ * Helper to convert a coordinate string (e.g., "g1f3 d7d5") 
+ * into Algebraic Notation (e.g., "Nf3 d5") using a temporary chess instance.
+ */
+    function convertPvToAlgebraic(fen, pvString) {
+      const tempChess = new Chess(fen);
+      const moves = pvString.split(" ");
+      const algebraicMoves = [];
+
+      for (const move of moves) {
+        // Construct move object for chess.js (supports promotions like e7e8q)
+        const moveObj = {
+          from: move.substring(0, 2),
+          to: move.substring(2, 4),
+          promotion: move.length === 5 ? move[4] : undefined
+        };
+
+        const result = tempChess.move(moveObj);
+        if (result) {
+          algebraicMoves.push(result.san);
+        } else {
+          break; // Stop if move is illegal
+        }
+      }
+      return algebraicMoves.join(" ");
+    }
+
+    /**
+         * Promisified engine evaluation.
+         * Captures the PV (Principal Variation) in coordinate format.
+         */
+    /**
+         * Updated evaluate to also return the SAN of the best move.
+         */
+    function evaluate(fen, depth) {
+      return new Promise(async (resolve) => {
+        const engine = await get_engine();
+        const sideToMove = fen.split(" ")[1];
+        let currentEval = 0;
+        let pv = "";
+
+        const onMsg = (e) => {
+          if (e.data.startsWith("info depth") && e.data.includes("score cp")) {
+            const matchCp = e.data.match(/score cp (-?\d+)/);
+            const matchPv = e.data.match(/ pv (.+)/);
+            if (matchCp) {
+              currentEval = parseInt(matchCp[1]);
+              // Perspective normalization: 
+              // If it's black's turn, engine says +100 (black is better).
+              // We negate it so that the score is always from White's perspective.
+              if (sideToMove === 'b') currentEval = -currentEval;
+            }
+            if (matchPv) pv = matchPv[1];
+          }
+          if (e.data.startsWith("bestmove")) {
+            const bestMoveUci = e.data.split(" ")[1];
+            // Convert UCI to SAN for the log
+            const bestMoveSan = convertPvToAlgebraic(fen, bestMoveUci).split(" ")[0];
+            engine.removeEventListener("message", onMsg);
+            resolve({ score: currentEval, bestMove: bestMoveUci, san: bestMoveSan, pv: pv });
+          }
+        };
+
+        engine.addEventListener("message", onMsg);
+        engine.postMessage(`position fen ${fen}`);
+        engine.postMessage(`go depth ${depth}`);
+      });
+    }
+
     document.getElementById('btnAnalyze').onclick = async () => {
       const sel = document.getElementById('gameList').selectedOptions[0];
       if (!sel) return alert("Select a game!");
 
-      const user = document.getElementById('player').value.toLowerCase();
+      const currentUser = document.getElementById('player').value.toLowerCase();
       const margin = parseInt(document.getElementById('margin').value);
-      const chess = new Chess();
-      chess.load_pgn(sel.dataset.pgn);
-      const history = chess.history({ verbose: true });
 
-      chess.reset();
-      let last_eval = 0;
-      log("Analyzing move by move...");
+      const game = new Chess();
+      if (!game.load_pgn(sel.dataset.pgn)) return log("error: failed to load pgn.");
+
+      const headers = game.header();
+      const whitePlayer = (headers.White || "").toLowerCase();
+      const blackPlayer = (headers.Black || "").toLowerCase();
+      const history = game.history({ verbose: true });
+      game.reset();
+
+      log("--- analysis started ---");
+      let blindspotFound = false;
 
       for (let i = 0; i < history.length; i++) {
         const move = history[i];
-        const fen_before = chess.fen();
-        const side = chess.turn(); // 'w' or 'b'
+        const fenBefore = game.fen();
+        const side = game.turn();
+        const isUserTurn = (side === 'w' && whitePlayer === currentUser) ||
+          (side === 'b' && blackPlayer === currentUser);
 
-        const current_eval = await evaluate(fen_before, 12);
-        console.log(current_eval);
+        // Position before player moved
+        const beforeAnalysis = await evaluate(fenBefore, 12);
+        const engineBestScore = beforeAnalysis.score;
+        const engineBestMove = beforeAnalysis.san;
 
-        // Difference from the previous position's expected outcome
-        const diff = Math.abs(current_eval - last_eval);
+        // Player's actual move
+        game.move(move);
+        const afterAnalysis = await evaluate(game.fen(), 12);
+        const playerMoveScore = afterAnalysis.score;
 
-        if (diff >= margin) {
-          log(`Found blindspot at move ${i + 1}!`);
-          const puzzle = {
-            fen: fen_before,
-            gain: (diff / 100).toFixed(1),
-            side: side === 'w' ? 'White' : 'Black',
-            solution: move.san,
-            id: Date.now()
-          };
-          save_puzzle(puzzle);
-          show_puzzle(puzzle);
-          return; // Stop at first occurrence
+        // Calculate loss based on the turn
+        let diff = (side === 'w') ? (engineBestScore - playerMoveScore) : (playerMoveScore - engineBestScore);
+
+        // LOGGING: Move number | Player Move vs Engine Move | Score Diff
+        const moveLog = `${i + 1}: ${move.san} (${playerMoveScore}) vs Engine: ${engineBestMove} (${engineBestScore})`;
+        log(moveLog);
+
+        if (isUserTurn && diff >= margin) {
+          const moveUci = move.from + move.to + (move.promotion || "");
+          if (moveUci !== beforeAnalysis.bestMove) {
+            log(`!!! blindspot found: ${diff} cp loss`);
+
+            const readableSolution = convertPvToAlgebraic(fenBefore, beforeAnalysis.pv);
+            const puzzle = {
+              fen: fenBefore,
+              gain: (diff / 100).toFixed(1),
+              side: side === 'w' ? 'white' : 'black',
+              solution: readableSolution,
+              id: Date.now(),
+              solved: false
+            };
+
+            save_puzzle(puzzle);
+            show_puzzle(puzzle);
+            blindspotFound = true;
+            break;
+          }
         }
-
-        chess.move(move);
-        last_eval = current_eval;
       }
-      log("No blindspots found in this game with current margin.");
+      if (!blindspotFound) log(`analysis complete; no blindspots found for ${currentUser}.`);
     };
 
     function save_puzzle(p) {
@@ -300,32 +375,91 @@
       render_saved_puzzles();
     }
 
+    function delete_puzzle(id) {
+      let existing = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      existing = existing.filter(p => p.id !== id);
+      localStorage.setItem('chess_puzzles', JSON.stringify(existing));
+      render_saved_puzzles();
+    }
+
+    function mark_solved(id) {
+      const existing = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      const puzzle = existing.find(p => p.id === id);
+      if (puzzle) {
+        puzzle.solved = true;
+        localStorage.setItem('chess_puzzles', JSON.stringify(existing));
+        render_saved_puzzles();
+      }
+    }
+
     function render_saved_puzzles() {
       const container = document.getElementById('puzzles');
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      let items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+
+      // Sort: unsolved (false) comes before solved (true)
+      items.sort((a, b) => (a.solved === b.solved) ? 0 : a.solved ? 1 : -1);
+
       container.innerHTML = "<h3>Saved Puzzles</h3>";
       items.forEach(p => {
         const div = document.createElement('div');
         div.className = 'puzzle-item';
-        div.innerHTML = `<span>${p.side} to gain ${p.gain}</span>`;
-        const btn = document.createElement('button');
-        btn.textContent = "Load";
-        btn.style.width = "auto";
-        btn.onclick = () => show_puzzle(p);
-        div.appendChild(btn);
+        if (p.solved) div.style.opacity = "0.6";
+
+        div.innerHTML = `
+          <div style="flex-grow:1">
+            <span style="${p.solved ? 'text-decoration: line-through;' : ''}">
+              ${p.side} (+${p.gain}) ${p.solved ? '✅' : ''}
+            </span>
+          </div>
+          <div style="display:flex; gap:4px;">
+            <button onclick="load_puzzle_by_id(${p.id})" style="width:auto; padding: 4px 8px; font-size: 12px;">Load</button>
+            ${!p.solved ? `<button onclick="mark_solved(${p.id})" style="width:auto; padding: 4px 8px; font-size: 12px; background:#28a745">Solved</button>` : ''}
+            <button onclick="delete_puzzle(${p.id})" style="width:auto; padding: 4px 8px; font-size: 12px; background:#dc3545">Delete</button>
+          </div>
+        `;
         container.appendChild(div);
       });
     }
 
+    // Helper to load puzzle from the list
+    window.load_puzzle_by_id = (id) => {
+      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      const puzzle = items.find(p => p.id === id);
+      if (puzzle) show_puzzle(puzzle);
+    };
+
+    /**
+         * Updates the training UI with the selected puzzle.
+         */
     function show_puzzle(p) {
       state_.current_puzzle = p;
       state_.board.position(p.fen);
+
+      // Reset the solution display
+      const solDiv = document.getElementById('solutionText');
+      solDiv.style.display = 'none';
+      solDiv.innerHTML = "";
+
       document.getElementById('hint').innerHTML = `<strong>Hint:</strong> Find ${p.side} move to gain ${p.gain}`;
       document.getElementById('btnSolution').style.display = 'block';
     }
 
-    document.getElementById('btnSolution').onclick = () => {
-      alert(`The move was: ${state_.current_puzzle.solution}`);
+    /**
+     * Renders the solution in the div below the button instead of an alert.
+     */
+    document.getElementById('btnSolution').onclick = function () {
+      const solDiv = document.getElementById('solutionText');
+
+      // If already shown, hide it; otherwise show it
+      if (solDiv.style.display === 'block') {
+        solDiv.style.display = 'none';
+      } else {
+        solDiv.style.display = 'block';
+        solDiv.innerHTML = `
+          <strong style="color: var(--primary)">Best Sequence:</strong><br>
+          <span style="font-family: monospace; font-size: 1.1rem;">${state_.current_puzzle.solution}</span>
+        `;
+      }
     };
 
     window.onload = init;
