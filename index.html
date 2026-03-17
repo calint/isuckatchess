@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess Blindspot Trainer</title>
+  <link rel="stylesheet" href="https://app.unpkg.com/chessboardjs@0.0.1/files/www/css/chessboard.css" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f4f7;
+      color: #1f2937;
+    }
+
+    header {
+      padding: 1rem 1.25rem;
+      background: #0b4a6f;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    header small {
+      opacity: 0.8;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 1rem auto;
+      padding: 0 1rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .panel {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.06);
+    }
+
+    .panel h2 {
+      margin-top: 0;
+      font-size: 1rem;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.9rem;
+    }
+
+    select,
+    input[type=text],
+    input[type=number],
+    button {
+      font-size: 1rem;
+      padding: 0.5rem 0.6rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      outline: none;
+    }
+
+    button {
+      cursor: pointer;
+      background: #0b4a6f;
+      color: white;
+      border: 1px solid transparent;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: #0a3a57;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .small {
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+
+    #log {
+      height: 10rem;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: #f9fafb;
+    }
+
+    #puzzles {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .puzzle {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem;
+      align-items: start;
+    }
+
+    .puzzle h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+    }
+
+    .puzzle button {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 720px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div>
+      <h1>Chess Blindspot Trainer</h1>
+      <small>Analyze games and generate puzzles from missed opportunities</small>
+    </div>
+    <div class="button-group">
+      <button id="btnRefresh">Refresh archives</button>
+      <button id="btnClear">Clear saved puzzles</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid grid-3">
+      <section class="panel" id="panel-source">
+        <h2>1. Pick a game</h2>
+        <label>
+          Player (Chess.com username)
+          <input id="player" type="text" value="calint" placeholder="calint" />
+        </label>
+        <label>
+          Year / Month
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <select id="selectYear" style="flex:1"></select>
+            <select id="selectMonth" style="flex:1"></select>
+          </div>
+        </label>
+        <label>
+          Game
+          <select id="selectGame" size="5" style="height:10rem"></select>
+        </label>
+        <div class="button-group">
+          <button id="btnLoadGames">Load games</button>
+          <button id="btnAnalyze" disabled>Analyze game</button>
+        </div>
+        <p class="small">Select a game, then click Analyze. May take up to 30s (runs Stockfish in browser).</p>
+      </section>
+
+      <section class="panel" id="panel-config">
+        <h2>2. Configure</h2>
+        <label>
+          Your username
+          <input id="inputUser" type="text" placeholder="calint" />
+        </label>
+        <label>
+          Threshold (centipawns)
+          <input id="inputThreshold" type="number" value="150" min="10" step="10" />
+        </label>
+        <label>
+          Engine depth
+          <input id="inputDepth" type="number" value="12" min="6" max="18" step="1" />
+        </label>
+        <div class="button-group">
+          <button id="btnSaveConfig">Save config</button>
+        </div>
+        <p class="small">Threshold is in centipawns (100 = 1 pawn). Higher makes fewer puzzles.</p>
+      </section>
+
+      <section class="panel" id="panel-board">
+        <h2>3. Board & puzzles</h2>
+        <div id="board" style="width: 100%; max-width: 420px; margin: 0 auto"></div>
+        <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
+          <button id="btnPrev">‹ Prev</button>
+          <button id="btnNext">Next ›</button>
+        </div>
+        <p class="small" id="boardInfo">No puzzle selected.</p>
+      </section>
+    </div>
+
+    <section class="panel" id="panel-puzzles">
+      <h2>Saved puzzles</h2>
+      <ul id="puzzles"></ul>
+      <p class="small">Puzzles are saved in your browser's local storage.</p>
+    </section>
+
+    <section class="panel" id="panel-log">
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </section>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script>
+    const ARCHIVE_URL = "https://api.chess.com/pub/player";
+    const STORAGE_KEY = "chess_blindspot_puzzles_v1";
+
+    const dom = {
+      player: document.getElementById("player"),
+      selectYear: document.getElementById("selectYear"),
+      selectMonth: document.getElementById("selectMonth"),
+      selectGame: document.getElementById("selectGame"),
+      btnLoadGames: document.getElementById("btnLoadGames"),
+      btnAnalyze: document.getElementById("btnAnalyze"),
+      inputUser: document.getElementById("inputUser"),
+      inputThreshold: document.getElementById("inputThreshold"),
+      inputDepth: document.getElementById("inputDepth"),
+      btnSaveConfig: document.getElementById("btnSaveConfig"),
+      btnRefresh: document.getElementById("btnRefresh"),
+      btnClear: document.getElementById("btnClear"),
+      board: document.getElementById("board"),
+      btnPrev: document.getElementById("btnPrev"),
+      btnNext: document.getElementById("btnNext"),
+      boardInfo: document.getElementById("boardInfo"),
+      puzzles: document.getElementById("puzzles"),
+      log: document.getElementById("log"),
+    };
+
+    let engine;
+    let board;
+    let puzzles = [];
+    let selectedPuzzleIndex = -1;
+
+    function log(message) {
+      dom.log.textContent += message + "\n";
+      dom.log.scrollTop = dom.log.scrollHeight;
+    }
+
+    function savePuzzles() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(puzzles));
+    }
+
+    function loadPuzzles() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.warn("Failed to parse puzzles", e);
+        return [];
+      }
+    }
+
+    function renderPuzzleList() {
+      dom.puzzles.innerHTML = "";
+      puzzles.forEach((puzzle, idx) => {
+        const li = document.createElement("li");
+        li.className = "puzzle";
+
+        const info = document.createElement("div");
+        const title = document.createElement("h3");
+        const reasonTag = puzzle.reason ? ` [${puzzle.reason}]` : "";
+        title.textContent = `#${puzzle.gameId} move ${puzzle.moveNumber} (${puzzle.side})${reasonTag}`;
+        info.appendChild(title);
+
+        const details = document.createElement("div");
+        details.innerHTML = `
+          <div><strong>Best:</strong> ${puzzle.bestMove}</div>
+          <div><strong>Gain:</strong> ${Math.round(puzzle.gain)} cp</div>
+          <div><strong>Game:</strong> ${puzzle.gameUrl ? `<a href="${puzzle.gameUrl}" target="_blank">view</a>` : "-"}</div>
+        `;
+        info.appendChild(details);
+
+        const actions = document.createElement("div");
+        actions.style.display = "grid";
+        actions.style.gap = "0.4rem";
+
+        const btnShow = document.createElement("button");
+        btnShow.textContent = "Show";
+        btnShow.onclick = () => selectPuzzle(idx);
+        actions.appendChild(btnShow);
+
+        const btnSolution = document.createElement("button");
+        btnSolution.textContent = "Solution";
+        btnSolution.onclick = () => alert(`Best move: ${puzzle.bestMove}\nGain: ${Math.round(puzzle.gain)} centipawns`);
+        actions.appendChild(btnSolution);
+
+        const btnDel = document.createElement("button");
+        btnDel.textContent = "Remove";
+        btnDel.onclick = () => {
+          puzzles.splice(idx, 1);
+          savePuzzles();
+          renderPuzzleList();
+          if (selectedPuzzleIndex === idx) {
+            selectedPuzzleIndex = -1;
+            renderSelectedPuzzle();
+          }
+        };
+        actions.appendChild(btnDel);
+
+        li.appendChild(info);
+        li.appendChild(actions);
+        dom.puzzles.appendChild(li);
+      });
+
+      if (puzzles.length === 0) {
+        dom.puzzles.innerHTML = "<p class='small'>No puzzles yet. Analyze a game to generate puzzles.</p>";
+      }
+    }
+
+    function renderSelectedPuzzle() {
+      if (selectedPuzzleIndex < 0 || selectedPuzzleIndex >= puzzles.length) {
+        dom.boardInfo.textContent = "No puzzle selected.";
+        board.position("start");
+        return;
+      }
+      const puzzle = puzzles[selectedPuzzleIndex];
+      board.position(puzzle.fen);
+      dom.boardInfo.textContent = `Puzzle ${selectedPuzzleIndex + 1}/${puzzles.length}: move ${puzzle.moveNumber} (${puzzle.side}) — best: ${puzzle.bestMove} (+${Math.round(puzzle.gain)} cp)`;
+    }
+
+    function selectPuzzle(idx) {
+      selectedPuzzleIndex = idx;
+      renderSelectedPuzzle();
+    }
+
+    function initBoard() {
+      board = Chessboard(dom.board, {
+        draggable: false,
+        position: "start",
+        // Add this line to fetch pieces from the web instead of your local disk
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+      });
+    }
+
+    async function initEngine() {
+      if (engine) return engine;
+
+      log("Downloading Stockfish engine...");
+      try {
+        // Corrected URL to a version known to work as a standalone script
+        const response = await fetch("https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js");
+
+        if (!response.ok) throw new Error("Network response was not ok");
+
+        const script = await response.text();
+        const blob = new Blob([script], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(blob);
+
+        engine = new Worker(workerUrl);
+        engine.postMessage("uci");
+
+        // Listen for 'uciok' to confirm the engine is alive
+        engine.onmessage = (e) => {
+          if (e.data === 'uciok') log("Engine ready.");
+        };
+
+        return engine;
+      } catch (err) {
+        log(`Critical Error: ${err.message}`);
+        throw err;
+      }
+    }
+
+    function engineEval(fen, depth) {
+      return new Promise(async (resolve) => {
+        const e = await initEngine();
+        let bestScore = null;
+        let bestMove = null;
+        let lastInfo = null;
+
+        let evalTimeout;
+        const cleanup = () => {
+          if (evalTimeout) clearTimeout(evalTimeout);
+          e.removeEventListener("message", onmessage);
+        };
+
+        const onmessage = (msg) => {
+          const line = msg.data.trim();
+          if (!line) return;
+          if (line.startsWith("info")) {
+            lastInfo = line;
+            const match = /score (cp|mate) (-?\d+)/.exec(line);
+            if (match) {
+              const type = match[1];
+              const value = parseInt(match[2], 10);
+              const score = type === "cp" ? value : value > 0 ? 100000 - value : -100000 - value;
+              bestScore = score;
+            }
+          } else if (line.startsWith("bestmove")) {
+            const parts = line.split(" ");
+            bestMove = parts[1];
+            cleanup();
+            resolve({ score: bestScore, move: bestMove, info: lastInfo });
+          }
+        };
+
+        e.addEventListener("message", onmessage);
+        e.postMessage(`position fen ${fen}`);
+        e.postMessage(`go depth ${depth}`);
+
+        evalTimeout = setTimeout(() => {
+          cleanup();
+          resolve({ score: bestScore, move: bestMove, info: lastInfo, timedOut: true });
+        }, 25000);
+      });
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
+      return res.json();
+    }
+
+    async function loadArchives() {
+      dom.btnLoadGames.disabled = true;
+      dom.selectYear.innerHTML = "";
+      dom.selectMonth.innerHTML = "";
+      dom.selectGame.innerHTML = "";
+      const player = dom.player.value.trim() || "calint";
+      log(`Fetching archives for ${player}...`);
+      try {
+        const data = await fetchJson(`${ARCHIVE_URL}/${player}/games/archives`);
+        const archives = (data.archives || []).reverse();
+        const yearMap = {};
+        archives.forEach((url) => {
+          const parts = url.split("/");
+          const year = parts[parts.length - 2];
+          const month = parts[parts.length - 1];
+          yearMap[year] = yearMap[year] || [];
+          yearMap[year].push(month);
+        });
+        const years = Object.keys(yearMap).sort((a, b) => b - a);
+        years.forEach((y) => {
+          const opt = document.createElement("option");
+          opt.value = y;
+          opt.textContent = y;
+          dom.selectYear.appendChild(opt);
+        });
+        dom.selectYear.onchange = () => populateMonths(yearMap);
+        if (years.length > 0) dom.selectYear.value = years[0];
+        populateMonths(yearMap);
+        log(`Loaded ${archives.length} monthly archives.`);
+      } catch (err) {
+        log(`Error loading archives: ${err.message}`);
+      } finally {
+        dom.btnLoadGames.disabled = false;
+      }
+    }
+
+    function populateMonths(yearMap) {
+      const year = dom.selectYear.value;
+      const months = (yearMap[year] || []).sort((a, b) => b - a);
+      dom.selectMonth.innerHTML = "";
+      months.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        dom.selectMonth.appendChild(opt);
+      });
+    }
+
+    async function loadGames() {
+      const player = dom.player.value.trim();
+      const year = dom.selectYear.value;
+      const month = dom.selectMonth.value;
+      if (!player || !year || !month) {
+        alert("Please select player, year and month.");
+        return;
+      }
+      dom.btnLoadGames.disabled = true;
+      dom.btnAnalyze.disabled = true;
+      dom.selectGame.innerHTML = "";
+      log(`Fetching games for ${player} ${year}/${month} ...`);
+      try {
+        const data = await fetchJson(`${ARCHIVE_URL}/${player}/games/${year}/${month}`);
+        const games = data.games || [];
+        games.forEach((game, idx) => {
+          const opt = document.createElement("option");
+          const date = new Date(game.end_time * 1000).toISOString().slice(0, 10);
+          const vs = game.white.username.toLowerCase() === player.toLowerCase() ? game.black.username : game.white.username;
+          const result = game.white.username.toLowerCase() === player.toLowerCase() ? game.white.result : game.black.result;
+          opt.value = idx;
+          opt.textContent = `${date} vs ${vs} (${result})`;
+          opt.dataset.url = game.url;
+          opt.dataset.pgn = game.pgn;
+          dom.selectGame.appendChild(opt);
+        });
+        dom.btnAnalyze.disabled = games.length === 0;
+        log(`Loaded ${games.length} games.`);
+      } catch (err) {
+        log(`Error loading games: ${err.message}`);
+      } finally {
+        dom.btnLoadGames.disabled = false;
+      }
+    }
+
+    function getSelectedGame() {
+      const sel = dom.selectGame.selectedOptions[0];
+      if (!sel) return null;
+      return {
+        pgn: sel.dataset.pgn,
+        url: sel.dataset.url,
+        label: sel.textContent,
+      };
+    }
+
+    async function analyzeGame() {
+      const selected = getSelectedGame();
+      if (!selected) {
+        alert("Please select a game first.");
+        return;
+      }
+      const user = dom.inputUser.value.trim() || dom.player.value.trim();
+      const threshold = Number(dom.inputThreshold.value) || 150;
+      const depth = Number(dom.inputDepth.value) || 12;
+      dom.btnAnalyze.disabled = true;
+      log(`Analyzing game: ${selected.label}`);
+
+      const header = {};
+      selected.pgn.split("\n").forEach((line) => {
+        const match = line.match(/^\[(\w+)\s+"(.+)"\]$/);
+        if (match) header[match[1]] = match[2];
+      });
+      const userLower = user.toLowerCase();
+      const userColor = header.White && header.White.toLowerCase() === userLower ? "white" : header.Black && header.Black.toLowerCase() === userLower ? "black" : null;
+
+      const chess = new Chess();
+      chess.load_pgn(selected.pgn);
+      const history = chess.history({ verbose: true });
+      chess.reset();
+
+      const puzzlesFound = [];
+      let lastScore = null;
+
+      // Evaluate starting position to establish baseline
+      const startEval = await engineEval(chess.fen(), depth);
+      lastScore = startEval.score;
+      log(`Starting evaluation: ${Math.round(lastScore)} cp`);
+
+      for (let i = 0; i < history.length; i++) {
+        const move = history[i];
+        const fenBefore = chess.fen();
+        const side = chess.turn() === "w" ? "white" : "black";
+        const isUserMove = userColor ? userColor === side : false;
+
+        const best = await engineEval(fenBefore, depth);
+        if (!best || best.score === null) {
+          log(`Engine did not return a score for move ${i + 1}.`);
+        }
+        const bestScore = best.score;
+        const bestMove = best.move;
+
+        const opportunity = Math.abs(bestScore - lastScore);
+
+        // play the actual move
+        chess.move(move.san, { sloppy: true });
+        const actualEval = (await engineEval(chess.fen(), depth)).score;
+        const missed = Math.abs(bestScore - actualEval);
+
+        const shouldCreateMissed = isUserMove && bestMove && move.san !== bestMove && missed >= threshold;
+        const shouldCreateOpportunity = opportunity >= threshold;
+
+        if (shouldCreateMissed || shouldCreateOpportunity) {
+          const puzzle = {
+            id: `${Date.now()}-${i}`,
+            gameId: selected.label,
+            gameUrl: selected.url,
+            moveNumber: i + 1,
+            side,
+            fen: fenBefore,
+            bestMove,
+            gain: Math.round(shouldCreateMissed ? missed : opportunity),
+            threshold,
+            createdAt: new Date().toISOString(),
+            reason: shouldCreateMissed ? "missed" : "opportunity",
+          };
+          puzzlesFound.push(puzzle);
+          log(`Puzzle found at move ${i + 1} (${side}) ${puzzle.reason} +${puzzle.gain} cp`);
+        }
+
+        lastScore = actualEval;
+      }
+
+      if (puzzlesFound.length === 0) {
+        log("No puzzles found for the selected threshold.");
+      }
+
+      puzzles = loadPuzzles().concat(puzzlesFound);
+      savePuzzles();
+      renderPuzzleList();
+      dom.btnAnalyze.disabled = false;
+      if (puzzlesFound.length > 0) {
+        selectedPuzzleIndex = puzzles.length - puzzlesFound.length;
+        renderSelectedPuzzle();
+      }
+    }
+
+    function saveConfig() {
+      const cfg = {
+        user: dom.inputUser.value.trim(),
+        threshold: dom.inputThreshold.value,
+        depth: dom.inputDepth.value,
+      };
+      localStorage.setItem("chess_blindspot_config", JSON.stringify(cfg));
+      log("Config saved.");
+    }
+
+    function loadConfig() {
+      const raw = localStorage.getItem("chess_blindspot_config");
+      if (!raw) return;
+      try {
+        const cfg = JSON.parse(raw);
+        if (cfg.user) dom.inputUser.value = cfg.user;
+        if (cfg.threshold) dom.inputThreshold.value = cfg.threshold;
+        if (cfg.depth) dom.inputDepth.value = cfg.depth;
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    function clearPuzzles() {
+      if (!confirm("Clear all saved puzzles?")) return;
+      puzzles = [];
+      savePuzzles();
+      renderPuzzleList();
+      selectedPuzzleIndex = -1;
+      renderSelectedPuzzle();
+      log("Cleared saved puzzles.");
+    }
+
+    function init() {
+      initBoard();
+      loadConfig();
+      puzzles = loadPuzzles();
+      renderPuzzleList();
+      renderSelectedPuzzle();
+
+      dom.btnLoadGames.addEventListener("click", loadGames);
+      dom.btnAnalyze.addEventListener("click", analyzeGame);
+      dom.btnSaveConfig.addEventListener("click", saveConfig);
+      dom.btnRefresh.addEventListener("click", () => {
+        log("Refreshing archives...");
+        loadArchives();
+      });
+      dom.btnClear.addEventListener("click", clearPuzzles);
+      dom.btnPrev.addEventListener("click", () => {
+        if (selectedPuzzleIndex > 0) {
+          selectPuzzle(selectedPuzzleIndex - 1);
+        }
+      });
+      dom.btnNext.addEventListener("click", () => {
+        if (selectedPuzzleIndex < puzzles.length - 1) {
+          selectPuzzle(selectedPuzzleIndex + 1);
+        }
+      });
+
+      loadArchives();
+    }
+
+    window.addEventListener("load", init);
+  </script>
+</body>
+
+</html>
