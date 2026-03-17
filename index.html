@@ -83,14 +83,44 @@
       justify-content: space-between;
       align-items: center;
     }
+
+    /* Container for the board and the bar */
+    .board-container {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      margin: 1rem 0;
+    }
+
+    /* The evaluation bar track */
+    #eval-bar {
+      width: 25px;
+      background: #444;
+      /* Black's color */
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #ccc;
+    }
+
+    /* The white part of the bar */
+    #eval-fill {
+      width: 100%;
+      height: 50%;
+      /* Starts at middle (0.0) */
+      background: #eee;
+      /* White's color */
+      position: absolute;
+      bottom: 0;
+      transition: height 0.3s ease;
+    }
   </style>
 </head>
 
 <body>
 
   <header>
-    <h1>Chess Blindspot Trainer</h1>
-    <p>Find what you (and your opponents) missed.</p>
+    <h1>Blindspot Trainer</h1>
   </header>
 
   <main>
@@ -106,6 +136,9 @@
       <hr>
       <h2>2. Settings</h2>
       <label>Threshold (CP): <input id="margin" type="number" value="100"></label>
+      <label style="display: flex; align-items: center; gap: 8px;">
+        <input id="materialOnly" type="checkbox" style="width: auto;"> Focus on Material Gains only
+      </label>
       <button id="btnAnalyze">Analyze & Find First Blindspot</button>
       <div id="log">Ready.</div>
     </section>
@@ -113,7 +146,12 @@
     <section class="panel">
       <h2>3. Training</h2>
       <div id="hint">Select a puzzle to begin...</div>
-      <div id="board"></div>
+      <div class="board-container">
+        <div id="eval-bar">
+          <div id="eval-fill"></div>
+        </div>
+        <div id="board" style="flex-grow: 1;"></div>
+      </div>
       <button id="btnSolution" style="display:none">Show Solution</button>
       <div id="solutionText"
         style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 8px; display: none; border: 1px solid #0b4a6f;">
@@ -258,13 +296,6 @@
       return algebraicMoves.join(" ");
     }
 
-    /**
-         * Promisified engine evaluation.
-         * Captures the PV (Principal Variation) in coordinate format.
-         */
-    /**
-         * Updated evaluate to also return the SAN of the best move.
-         */
     function evaluate(fen, depth) {
       return new Promise(async (resolve) => {
         const engine = await get_engine();
@@ -300,12 +331,40 @@
       });
     }
 
+    /**
+     * Updates the visual evaluation bar.
+     * Maps CP score to a percentage (White-centric).
+     */
+    function update_eval_bar(cp) {
+      const fill = document.getElementById('eval-fill');
+      // Normalize: +500 CP is 100% white, -500 CP is 0% white (100% black)
+      // We use a sigmoid-like clamp to keep the bar useful
+      let percentage = 50 + (cp / 20);
+      if (percentage > 100) percentage = 100;
+      if (percentage < 0) percentage = 0;
+
+      fill.style.height = percentage + "%";
+    }
+
+    /**
+ * Calculates material score: positive for white, negative for black.
+ */
+    function get_material_score(game) {
+      const values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+      return game.board().flat().reduce((acc, piece) => {
+        if (!piece) return acc;
+        const val = values[piece.type];
+        return piece.color === 'w' ? acc + val : acc - val;
+      }, 0);
+    }
+
     document.getElementById('btnAnalyze').onclick = async () => {
       const sel = document.getElementById('gameList').selectedOptions[0];
       if (!sel) return alert("Select a game!");
 
       const currentUser = document.getElementById('player').value.toLowerCase();
       const margin = parseInt(document.getElementById('margin').value);
+      const materialOnly = document.getElementById('materialOnly').checked;
 
       const game = new Chess();
       if (!game.load_pgn(sel.dataset.pgn)) return log("error: failed to load pgn.");
@@ -314,9 +373,11 @@
       const whitePlayer = (headers.White || "").toLowerCase();
       const blackPlayer = (headers.Black || "").toLowerCase();
       const history = game.history({ verbose: true });
-      game.reset();
 
-      log("--- analysis started ---");
+      game.reset();
+      state_.board.position('start');
+
+      log(`--- analysis started (${materialOnly ? 'Material Only' : 'Positional + Material'}) ---`);
       let blindspotFound = false;
 
       for (let i = 0; i < history.length; i++) {
@@ -326,38 +387,66 @@
         const isUserTurn = (side === 'w' && whitePlayer === currentUser) ||
           (side === 'b' && blackPlayer === currentUser);
 
-        // Position before player moved
+        // 1. Engine evaluation BEFORE move
         const beforeAnalysis = await evaluate(fenBefore, 12);
-        const engineBestScore = beforeAnalysis.score;
-        const engineBestMove = beforeAnalysis.san;
 
-        // Player's actual move
+        // 2. Determine engine's expected material outcome
+        let engineMaterialOutcome = 0;
+        if (materialOnly) {
+          const engineSim = new Chess(fenBefore);
+          const pvMoves = beforeAnalysis.pv.split(" ");
+          // Follow engine PV for 4 half-moves to see if a capture is completed
+          for (let j = 0; j < Math.min(pvMoves.length, 4); j++) {
+            engineSim.move({
+              from: pvMoves[j].substring(0, 2),
+              to: pvMoves[j].substring(2, 4),
+              promotion: 'q'
+            });
+          }
+          engineMaterialOutcome = get_material_score(engineSim);
+        }
+
+        // 3. Player's actual move
         game.move(move);
+        state_.board.position(game.fen());
+        await new Promise(r => setTimeout(r, 200));
+
         const afterAnalysis = await evaluate(game.fen(), 12);
-        const playerMoveScore = afterAnalysis.score;
+        update_eval_bar(afterAnalysis.score);
 
-        // Calculate loss based on the turn
-        let diff = (side === 'w') ? (engineBestScore - playerMoveScore) : (playerMoveScore - engineBestScore);
+        // 4. Decision Logic
+        let shouldFlag = false;
+        let diffLabel = "";
 
-        // LOGGING: Move number | Player Move vs Engine Move | Score Diff
-        const moveLog = `${i + 1}: ${move.san} (${playerMoveScore}) vs Engine: ${engineBestMove} (${engineBestScore})`;
-        log(moveLog);
+        if (materialOnly) {
+          const actualMaterial = get_material_score(game);
+          const materialMissed = (side === 'w') ?
+            (engineMaterialOutcome - actualMaterial) : (actualMaterial - engineMaterialOutcome);
 
-        if (isUserTurn && diff >= margin) {
+          // Flag if you missed gaining at least one pawn (1.0)
+          shouldFlag = materialMissed >= 1;
+          diffLabel = `${materialMissed} Material Points`;
+        } else {
+          const diff = (side === 'w') ?
+            (beforeAnalysis.score - afterAnalysis.score) : (afterAnalysis.score - beforeAnalysis.score);
+          shouldFlag = diff >= margin;
+          diffLabel = `${diff} CP`;
+        }
+
+        log(`${i + 1}: ${move.san} vs Engine ${beforeAnalysis.san}. Missed: ${diffLabel}`);
+
+        if (isUserTurn && shouldFlag) {
           const moveUci = move.from + move.to + (move.promotion || "");
           if (moveUci !== beforeAnalysis.bestMove) {
-            log(`!!! blindspot found: ${diff} cp loss`);
-
-            const readableSolution = convertPvToAlgebraic(fenBefore, beforeAnalysis.pv);
+            log(`!!! blindspot found: missed ${diffLabel}`);
             const puzzle = {
               fen: fenBefore,
-              gain: (diff / 100).toFixed(1),
+              gain: diffLabel,
               side: side === 'w' ? 'white' : 'black',
-              solution: readableSolution,
+              solution: convertPvToAlgebraic(fenBefore, beforeAnalysis.pv),
               id: Date.now(),
               solved: false
             };
-
             save_puzzle(puzzle);
             show_puzzle(puzzle);
             blindspotFound = true;
@@ -365,7 +454,7 @@
           }
         }
       }
-      if (!blindspotFound) log(`analysis complete; no blindspots found for ${currentUser}.`);
+      if (!blindspotFound) log("Analysis complete.");
     };
 
     function save_puzzle(p) {
