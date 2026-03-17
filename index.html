@@ -429,61 +429,69 @@
     };
 
     /**
-         * Updates the training UI with the selected puzzle.
+         * Resets the training UI and board to the specific puzzle state.
          */
     function show_puzzle(p) {
       state_.current_puzzle = p;
+
+      // Reset the board to the puzzle's FEN
       state_.board.position(p.fen);
 
-      // Reset the solution display
+      // Reset the solution text and button state
       const solDiv = document.getElementById('solutionText');
       solDiv.style.display = 'none';
       solDiv.innerHTML = "";
 
+      const btn = document.getElementById('btnSolution');
+      btn.innerHTML = "Show Solution";
+      btn.style.display = 'block';
+      btn.disabled = false;
+
       document.getElementById('hint').innerHTML = `<strong>Hint:</strong> Find ${p.side} move to gain ${p.gain}`;
-      document.getElementById('btnSolution').style.display = 'block';
     }
 
     /**
-     * Renders the solution in the div below the button instead of an alert.
+     * Handles both showing the solution (with animation) and resetting the board.
      */
     document.getElementById('btnSolution').onclick = async function () {
+      const btn = this;
       const solDiv = document.getElementById('solutionText');
-      const solutionStr = state_.current_puzzle.solution;
+      const p = state_.current_puzzle;
 
-      // 1. Show the text description
+      // If the button is currently in "Reset" mode
+      if (btn.innerHTML === "Reset Puzzle") {
+        show_puzzle(p);
+        return;
+      }
+
+      // Otherwise, we are in "Show Solution" mode
+      const solutionStr = p.solution;
       solDiv.style.display = 'block';
-      solDiv.innerHTML = `
-        <strong style="color: var(--primary)">Best Sequence:</strong><br>
-        <span style="font-family: monospace; font-size: 1.1rem;">${solutionStr}</span>
-      `;
+      solDiv.innerHTML = `<strong>Sequence:</strong> ${solutionStr}`;
 
-      // 2. Play the moves on the board
-      const tempGame = new Chess(state_.current_puzzle.fen);
+      const tempGame = new Chess(p.fen);
       const moveSequence = solutionStr.split(" ");
       let moveIndex = 0;
 
-      // Disable button during animation to prevent overlapping intervals
-      this.disabled = true;
+      btn.disabled = true; // Prevent double-clicking during animation
 
       const playbackInterval = setInterval(() => {
         if (moveIndex >= moveSequence.length) {
           clearInterval(playbackInterval);
-          document.getElementById('btnSolution').disabled = false;
+          btn.disabled = false;
+          btn.innerHTML = "Reset Puzzle"; // Change button text after animation
           return;
         }
 
-        const moveResult = tempGame.move(moveSequence[moveIndex]);
-        if (moveResult) {
-          // Update the visual board
+        const res = tempGame.move(moveSequence[moveIndex]);
+        if (res) {
           state_.board.position(tempGame.fen());
           moveIndex++;
         } else {
-          // Stop if something goes wrong (e.g. illegal move string)
           clearInterval(playbackInterval);
-          document.getElementById('btnSolution').disabled = false;
+          btn.disabled = false;
         }
-      }, 800); // 800ms delay between moves
+      }, 800);
     };
 
     window.onload = init;
