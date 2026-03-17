@@ -447,19 +447,43 @@
     /**
      * Renders the solution in the div below the button instead of an alert.
      */
-    document.getElementById('btnSolution').onclick = function () {
+    document.getElementById('btnSolution').onclick = async function () {
       const solDiv = document.getElementById('solutionText');
+      const solutionStr = state_.current_puzzle.solution;
 
-      // If already shown, hide it; otherwise show it
-      if (solDiv.style.display === 'block') {
-        solDiv.style.display = 'none';
-      } else {
-        solDiv.style.display = 'block';
-        solDiv.innerHTML = `
-          <strong style="color: var(--primary)">Best Sequence:</strong><br>
-          <span style="font-family: monospace; font-size: 1.1rem;">${state_.current_puzzle.solution}</span>
-        `;
-      }
+      // 1. Show the text description
+      solDiv.style.display = 'block';
+      solDiv.innerHTML = `
+        <strong style="color: var(--primary)">Best Sequence:</strong><br>
+        <span style="font-family: monospace; font-size: 1.1rem;">${solutionStr}</span>
+      `;
+
+      // 2. Play the moves on the board
+      const tempGame = new Chess(state_.current_puzzle.fen);
+      const moveSequence = solutionStr.split(" ");
+      let moveIndex = 0;
+
+      // Disable button during animation to prevent overlapping intervals
+      this.disabled = true;
+
+      const playbackInterval = setInterval(() => {
+        if (moveIndex >= moveSequence.length) {
+          clearInterval(playbackInterval);
+          document.getElementById('btnSolution').disabled = false;
+          return;
+        }
+
+        const moveResult = tempGame.move(moveSequence[moveIndex]);
+        if (moveResult) {
+          // Update the visual board
+          state_.board.position(tempGame.fen());
+          moveIndex++;
+        } else {
+          // Stop if something goes wrong (e.g. illegal move string)
+          clearInterval(playbackInterval);
+          document.getElementById('btnSolution').disabled = false;
+        }
+      }, 800); // 800ms delay between moves
     };
 
     window.onload = init;
