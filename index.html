@@ -152,6 +152,12 @@
         </div>
         <div id="board" style="flex-grow: 1;"></div>
       </div>
+
+      <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+        <button id="btnPrev" style="flex:1">Step Back</button>
+        <button id="btnNext" style="flex:1">Step Forward</button>
+      </div>
+
       <button id="btnSolution" style="display:none">Show Solution</button>
       <div id="solutionText"
         style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 8px; display: none; border: 1px solid #0b4a6f;">
@@ -517,20 +523,28 @@
       if (puzzle) show_puzzle(puzzle);
     };
 
+    // Add a specific game instance for training
+    state_.training_game = new Chess();
+
     /**
-         * Resets the training UI and board to the specific puzzle state.
-         */
+     * Enhanced show_puzzle to enable dragging and history tracking.
+     */
     function show_puzzle(p) {
       state_.current_puzzle = p;
+      state_.training_game.load(p.fen); // Load the puzzle position into the training game
 
-      // Reset the board to the puzzle's FEN
-      state_.board.position(p.fen);
+      state_.board = Chessboard('board', {
+        draggable: true,
+        position: p.fen,
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+        onDrop: (source, target) => {
+          const move = state_.training_game.move({ from: source, to: target, promotion: 'q' });
+          if (move === null) return 'snapback';
+          update_eval_bar_from_fen(state_.training_game.fen());
+        }
+      });
 
-      // Reset the solution text and button state
-      const solDiv = document.getElementById('solutionText');
-      solDiv.style.display = 'none';
-      solDiv.innerHTML = "";
-
+      document.getElementById('solutionText').style.display = 'none';
       const btn = document.getElementById('btnSolution');
       btn.innerHTML = "Show Solution";
       btn.style.display = 'block';
@@ -582,6 +596,40 @@
         }
       }, 800);
     };
+
+    /**
+ * Step Backward in the training board history.
+ */
+    document.getElementById('btnPrev').onclick = () => {
+      state_.training_game.undo();
+      state_.board.position(state_.training_game.fen());
+      update_eval_bar_from_fen(state_.training_game.fen());
+    };
+
+    /**
+     * Step Forward in the training board history.
+     * (This works if you've already played through the solution sequence).
+     */
+    document.getElementById('btnNext').onclick = () => {
+      // Note: Standard chess.js undo/redo needs a list of moves if you want a "Forward" button
+      // For a simple 'Step Forward' in a puzzle, we usually look at the solution sequence
+      const solMoves = state_.current_puzzle.solution.split(" ");
+      const currentHistory = state_.training_game.history().length;
+
+      if (currentHistory < solMoves.length) {
+        state_.training_game.move(solMoves[currentHistory]);
+        state_.board.position(state_.training_game.fen());
+        update_eval_bar_from_fen(state_.training_game.fen());
+      }
+    };
+
+    /**
+     * Helper to update the eval bar during manual board play.
+     */
+    async function update_eval_bar_from_fen(fen) {
+      const analysis = await evaluate(fen, 10); // slightly lower depth for speed
+      update_eval_bar(analysis.score);
+    }
 
     window.onload = init;
   </script>
