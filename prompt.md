@@ -14,15 +14,15 @@ To find blind spots in user evaluation of chess positions.
 Evaluate each move in selected game and if the user (input box to specify) misses
 a move that results an evaluation difference higher than a specified margin (input box to specify) then make a chess problem that is saved in local javascript storage.
 
-The problem should be presented with a chess board showing that position. As an 
-hint the app should say: "find white/black move to gain 3.2" then display the
-board.
-
-To further improve the user chess vision also find the positions which give the 
+To further improve the user chess vision also find the position which give the 
 opponent an opportunity to change the evaluation by the specified threshold whether
 it was made or not. 
 
 Stop at first occurance.
+
+The problem should be presented with a chess board showing that position. As an 
+hint the app should say: "find white/black move to gain 3.2" then display the
+board.
 
 A button or link named "solution" with the moves that gets that evaluation should
 be displayed when clicked.

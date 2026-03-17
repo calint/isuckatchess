@@ -2,705 +2,333 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Chess Blindspot Trainer</title>
-  <link rel="stylesheet" href="https://app.unpkg.com/chessboardjs@0.0.1/files/www/css/chessboard.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <style>
+    :root {
+      --primary: #0b4a6f;
+      --bg: #f2f4f7;
+    }
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui;
+      background: var(--bg);
       margin: 0;
-      padding: 0;
-      background: #f2f4f7;
-      color: #1f2937;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     header {
-      padding: 1rem 1.25rem;
-      background: #0b4a6f;
-      color: #fff;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 1.2rem;
-    }
-
-    header small {
-      opacity: 0.8;
+      background: var(--primary);
+      color: white;
+      width: 100%;
+      padding: 1rem;
+      text-align: center;
     }
 
     main {
-      max-width: 1100px;
-      margin: 1rem auto;
-      padding: 0 1rem;
-    }
-
-    .grid {
+      max-width: 900px;
+      width: 95%;
       display: grid;
-      gap: 1rem;
-    }
-
-    .grid-3 {
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      padding: 2rem;
     }
 
     .panel {
       background: white;
-      border-radius: 0.75rem;
-      padding: 1rem;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.06);
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     }
 
-    .panel h2 {
-      margin-top: 0;
-      font-size: 1rem;
-    }
-
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      font-size: 0.9rem;
-    }
-
+    input,
     select,
-    input[type=text],
-    input[type=number],
     button {
-      font-size: 1rem;
-      padding: 0.5rem 0.6rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      outline: none;
+      width: 100%;
+      padding: 0.6rem;
+      margin: 0.5rem 0;
+      border: 1px solid #ddd;
+      border-radius: 6px;
     }
 
     button {
-      cursor: pointer;
-      background: #0b4a6f;
+      background: var(--primary);
       color: white;
-      border: 1px solid transparent;
-      transition: background 0.2s ease;
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
     }
 
-    button:hover {
-      background: #0a3a57;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-top: 0.5rem;
-    }
-
-    .small {
-      font-size: 0.85rem;
-      opacity: 0.8;
+    #board {
+      width: 100%;
+      margin: 1rem 0;
     }
 
     #log {
-      height: 10rem;
-      overflow: auto;
-      border: 1px solid #e5e7eb;
-      border-radius: 0.5rem;
+      font-size: 0.8rem;
+      height: 100px;
+      overflow-y: auto;
+      background: #eee;
       padding: 0.5rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      background: #f9fafb;
+      border-radius: 4px;
     }
 
-    #puzzles {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 0.75rem;
-    }
-
-    .puzzle {
-      border: 1px solid #e5e7eb;
-      border-radius: 0.75rem;
-      padding: 0.75rem;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.75rem;
-      align-items: start;
-    }
-
-    .puzzle h3 {
-      margin: 0 0 0.5rem;
-      font-size: 1rem;
-    }
-
-    .puzzle button {
-      padding: 0.4rem 0.6rem;
-      font-size: 0.85rem;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    @media (max-width: 720px) {
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .grid-3 {
-        grid-template-columns: 1fr;
-      }
+    .puzzle-item {
+      padding: 0.5rem;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
   </style>
 </head>
 
 <body>
+
   <header>
-    <div>
-      <h1>Chess Blindspot Trainer</h1>
-      <small>Analyze games and generate puzzles from missed opportunities</small>
-    </div>
-    <div class="button-group">
-      <button id="btnRefresh">Refresh archives</button>
-      <button id="btnClear">Clear saved puzzles</button>
-    </div>
+    <h1>Chess Blindspot Trainer</h1>
+    <p>Find what you (and your opponents) missed.</p>
   </header>
 
   <main>
-    <div class="grid grid-3">
-      <section class="panel" id="panel-source">
-        <h2>1. Pick a game</h2>
-        <label>
-          Player (Chess.com username)
-          <input id="player" type="text" value="calint" placeholder="calint" />
-        </label>
-        <label>
-          Year / Month
-          <div style="display:flex; gap:0.5rem; align-items:center;">
-            <select id="selectYear" style="flex:1"></select>
-            <select id="selectMonth" style="flex:1"></select>
-          </div>
-        </label>
-        <label>
-          Game
-          <select id="selectGame" size="5" style="height:10rem"></select>
-        </label>
-        <div class="button-group">
-          <button id="btnLoadGames">Load games</button>
-          <button id="btnAnalyze" disabled>Analyze game</button>
-        </div>
-        <p class="small">Select a game, then click Analyze. May take up to 30s (runs Stockfish in browser).</p>
-      </section>
-
-      <section class="panel" id="panel-config">
-        <h2>2. Configure</h2>
-        <label>
-          Your username
-          <input id="inputUser" type="text" placeholder="calint" />
-        </label>
-        <label>
-          Threshold (centipawns)
-          <input id="inputThreshold" type="number" value="150" min="10" step="10" />
-        </label>
-        <label>
-          Engine depth
-          <input id="inputDepth" type="number" value="12" min="6" max="18" step="1" />
-        </label>
-        <div class="button-group">
-          <button id="btnSaveConfig">Save config</button>
-        </div>
-        <p class="small">Threshold is in centipawns (100 = 1 pawn). Higher makes fewer puzzles.</p>
-      </section>
-
-      <section class="panel" id="panel-board">
-        <h2>3. Board & puzzles</h2>
-        <div id="board" style="width: 100%; max-width: 420px; margin: 0 auto"></div>
-        <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
-          <button id="btnPrev">‹ Prev</button>
-          <button id="btnNext">Next ›</button>
-        </div>
-        <p class="small" id="boardInfo">No puzzle selected.</p>
-      </section>
-    </div>
-
-    <section class="panel" id="panel-puzzles">
-      <h2>Saved puzzles</h2>
-      <ul id="puzzles"></ul>
-      <p class="small">Puzzles are saved in your browser's local storage.</p>
+    <section class="panel">
+      <h2>1. Load Data</h2>
+      <input id="player" type="text" value="calint" placeholder="Username">
+      <div style="display:flex; gap:0.5rem">
+        <select id="year"></select>
+        <select id="month"></select>
+      </div>
+      <button id="btnLoad">Fetch Games</button>
+      <select id="gameList" size="5"></select>
+      <hr>
+      <h2>2. Settings</h2>
+      <label>Threshold (CP): <input id="margin" type="number" value="150"></label>
+      <button id="btnAnalyze">Analyze & Find First Blindspot</button>
+      <div id="log">Ready.</div>
     </section>
 
-    <section class="panel" id="panel-log">
-      <h2>Log</h2>
-      <pre id="log"></pre>
+    <section class="panel">
+      <h2>3. Training</h2>
+      <div id="hint">Select a puzzle to begin...</div>
+      <div id="board"></div>
+      <button id="btnSolution" style="display:none">Show Solution</button>
+      <div id="puzzles"></div>
     </section>
   </main>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-  <script>
-    const ARCHIVE_URL = "https://api.chess.com/pub/player";
-    const STORAGE_KEY = "chess_blindspot_puzzles_v1";
 
-    const dom = {
-      player: document.getElementById("player"),
-      selectYear: document.getElementById("selectYear"),
-      selectMonth: document.getElementById("selectMonth"),
-      selectGame: document.getElementById("selectGame"),
-      btnLoadGames: document.getElementById("btnLoadGames"),
-      btnAnalyze: document.getElementById("btnAnalyze"),
-      inputUser: document.getElementById("inputUser"),
-      inputThreshold: document.getElementById("inputThreshold"),
-      inputDepth: document.getElementById("inputDepth"),
-      btnSaveConfig: document.getElementById("btnSaveConfig"),
-      btnRefresh: document.getElementById("btnRefresh"),
-      btnClear: document.getElementById("btnClear"),
-      board: document.getElementById("board"),
-      btnPrev: document.getElementById("btnPrev"),
-      btnNext: document.getElementById("btnNext"),
-      boardInfo: document.getElementById("boardInfo"),
-      puzzles: document.getElementById("puzzles"),
-      log: document.getElementById("log"),
+  <script>
+    /**
+     * Global application state.
+     */
+    const state_ = {
+      engine: null,
+      board: null,
+      current_puzzle: null
     };
 
-    let engine;
-    let board;
-    let puzzles = [];
-    let selectedPuzzleIndex = -1;
-
-    function log(message) {
-      dom.log.textContent += message + "\n";
-      dom.log.scrollTop = dom.log.scrollHeight;
-    }
-
-    function savePuzzles() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(puzzles));
-    }
-
-    function loadPuzzles() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      try {
-        return JSON.parse(raw);
-      } catch (e) {
-        console.warn("Failed to parse puzzles", e);
-        return [];
-      }
-    }
-
-    function renderPuzzleList() {
-      dom.puzzles.innerHTML = "";
-      puzzles.forEach((puzzle, idx) => {
-        const li = document.createElement("li");
-        li.className = "puzzle";
-
-        const info = document.createElement("div");
-        const title = document.createElement("h3");
-        const reasonTag = puzzle.reason ? ` [${puzzle.reason}]` : "";
-        title.textContent = `#${puzzle.gameId} move ${puzzle.moveNumber} (${puzzle.side})${reasonTag}`;
-        info.appendChild(title);
-
-        const details = document.createElement("div");
-        details.innerHTML = `
-          <div><strong>Best:</strong> ${puzzle.bestMove}</div>
-          <div><strong>Gain:</strong> ${Math.round(puzzle.gain)} cp</div>
-          <div><strong>Game:</strong> ${puzzle.gameUrl ? `<a href="${puzzle.gameUrl}" target="_blank">view</a>` : "-"}</div>
-        `;
-        info.appendChild(details);
-
-        const actions = document.createElement("div");
-        actions.style.display = "grid";
-        actions.style.gap = "0.4rem";
-
-        const btnShow = document.createElement("button");
-        btnShow.textContent = "Show";
-        btnShow.onclick = () => selectPuzzle(idx);
-        actions.appendChild(btnShow);
-
-        const btnSolution = document.createElement("button");
-        btnSolution.textContent = "Solution";
-        btnSolution.onclick = () => alert(`Best move: ${puzzle.bestMove}\nGain: ${Math.round(puzzle.gain)} centipawns`);
-        actions.appendChild(btnSolution);
-
-        const btnDel = document.createElement("button");
-        btnDel.textContent = "Remove";
-        btnDel.onclick = () => {
-          puzzles.splice(idx, 1);
-          savePuzzles();
-          renderPuzzleList();
-          if (selectedPuzzleIndex === idx) {
-            selectedPuzzleIndex = -1;
-            renderSelectedPuzzle();
-          }
-        };
-        actions.appendChild(btnDel);
-
-        li.appendChild(info);
-        li.appendChild(actions);
-        dom.puzzles.appendChild(li);
-      });
-
-      if (puzzles.length === 0) {
-        dom.puzzles.innerHTML = "<p class='small'>No puzzles yet. Analyze a game to generate puzzles.</p>";
-      }
-    }
-
-    function renderSelectedPuzzle() {
-      if (selectedPuzzleIndex < 0 || selectedPuzzleIndex >= puzzles.length) {
-        dom.boardInfo.textContent = "No puzzle selected.";
-        board.position("start");
-        return;
-      }
-      const puzzle = puzzles[selectedPuzzleIndex];
-      board.position(puzzle.fen);
-      dom.boardInfo.textContent = `Puzzle ${selectedPuzzleIndex + 1}/${puzzles.length}: move ${puzzle.moveNumber} (${puzzle.side}) — best: ${puzzle.bestMove} (+${Math.round(puzzle.gain)} cp)`;
-    }
-
-    function selectPuzzle(idx) {
-      selectedPuzzleIndex = idx;
-      renderSelectedPuzzle();
-    }
-
-    function initBoard() {
-      board = Chessboard(dom.board, {
-        draggable: false,
-        position: "start",
-        // Add this line to fetch pieces from the web instead of your local disk
+    /**
+     * Initialize board and UI.
+     */
+    function init() {
+      state_.board = Chessboard('board', {
+        position: 'start',
         pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
       });
+      load_archives();
+      render_saved_puzzles();
     }
 
-    async function initEngine() {
-      if (engine) return engine;
-
-      log("Downloading Stockfish engine...");
-      try {
-        // Corrected URL to a version known to work as a standalone script
-        const response = await fetch("https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js");
-
-        if (!response.ok) throw new Error("Network response was not ok");
-
-        const script = await response.text();
-        const blob = new Blob([script], { type: 'application/javascript' });
-        const workerUrl = URL.createObjectURL(blob);
-
-        engine = new Worker(workerUrl);
-        engine.postMessage("uci");
-
-        // Listen for 'uciok' to confirm the engine is alive
-        engine.onmessage = (e) => {
-          if (e.data === 'uciok') log("Engine ready.");
-        };
-
-        return engine;
-      } catch (err) {
-        log(`Critical Error: ${err.message}`);
-        throw err;
-      }
+    /**
+     * Log message to the UI.
+     */
+    function log(msg) {
+      const el = document.getElementById('log');
+      el.innerHTML += `<div>> ${msg}</div>`;
+      el.scrollTop = el.scrollHeight;
     }
 
-    function engineEval(fen, depth) {
+    /**
+     * Fetch engine via Blob to avoid CORS file errors.
+     */
+    async function get_engine() {
+      if (state_.engine) return state_.engine;
+      log("Loading Stockfish...");
+      const response = await fetch("https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js");
+      const blob = new Blob([await response.text()], { type: 'application/javascript' });
+      state_.engine = new Worker(URL.createObjectURL(blob));
+      state_.engine.postMessage("uci");
+      return state_.engine;
+    }
+
+    /**
+     * Promisified engine evaluation.
+     */
+    function evaluate(fen, depth) {
       return new Promise(async (resolve) => {
-        const e = await initEngine();
-        let bestScore = null;
-        let bestMove = null;
-        let lastInfo = null;
-
-        let evalTimeout;
-        const cleanup = () => {
-          if (evalTimeout) clearTimeout(evalTimeout);
-          e.removeEventListener("message", onmessage);
-        };
-
-        const onmessage = (msg) => {
-          const line = msg.data.trim();
-          if (!line) return;
-          if (line.startsWith("info")) {
-            lastInfo = line;
-            const match = /score (cp|mate) (-?\d+)/.exec(line);
-            if (match) {
-              const type = match[1];
-              const value = parseInt(match[2], 10);
-              const score = type === "cp" ? value : value > 0 ? 100000 - value : -100000 - value;
-              bestScore = score;
-            }
-          } else if (line.startsWith("bestmove")) {
-            const parts = line.split(" ");
-            bestMove = parts[1];
-            cleanup();
-            resolve({ score: bestScore, move: bestMove, info: lastInfo });
+        const engine = await get_engine();
+        const onMsg = (e) => {
+          if (e.data.startsWith("info depth") && e.data.includes("score cp")) {
+            const match = e.data.match(/score cp (-?\d+)/);
+            if (match) resolve(parseInt(match[1]));
+          }
+          if (e.data.startsWith("bestmove")) {
+            engine.removeEventListener("message", onMsg);
           }
         };
-
-        e.addEventListener("message", onmessage);
-        e.postMessage(`position fen ${fen}`);
-        e.postMessage(`go depth ${depth}`);
-
-        evalTimeout = setTimeout(() => {
-          cleanup();
-          resolve({ score: bestScore, move: bestMove, info: lastInfo, timedOut: true });
-        }, 25000);
+        engine.addEventListener("message", onMsg);
+        engine.postMessage(`position fen ${fen}`);
+        engine.postMessage(`go depth ${depth}`);
       });
     }
 
-    async function fetchJson(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
-      return res.json();
-    }
-
-    async function loadArchives() {
-      dom.btnLoadGames.disabled = true;
-      dom.selectYear.innerHTML = "";
-      dom.selectMonth.innerHTML = "";
-      dom.selectGame.innerHTML = "";
-      const player = dom.player.value.trim() || "calint";
-      log(`Fetching archives for ${player}...`);
+    /**
+     * Chess.com data fetching.
+     */
+    async function load_archives() {
+      const user = document.getElementById('player').value;
       try {
-        const data = await fetchJson(`${ARCHIVE_URL}/${player}/games/archives`);
-        const archives = (data.archives || []).reverse();
-        const yearMap = {};
-        archives.forEach((url) => {
-          const parts = url.split("/");
-          const year = parts[parts.length - 2];
-          const month = parts[parts.length - 1];
-          yearMap[year] = yearMap[year] || [];
-          yearMap[year].push(month);
+        const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
+        const data = await res.json();
+
+        // Extract year and month by splitting and taking the last two segments
+        // Example URL: .../player/calint/games/2026/03
+        const archiveData = data.archives.map(url => {
+          const parts = url.split('/');
+          return {
+            url: url,
+            year: parts[parts.length - 2],
+            month: parts[parts.length - 1]
+          };
         });
-        const years = Object.keys(yearMap).sort((a, b) => b - a);
-        years.forEach((y) => {
-          const opt = document.createElement("option");
-          opt.value = y;
-          opt.textContent = y;
-          dom.selectYear.appendChild(opt);
-        });
-        dom.selectYear.onchange = () => populateMonths(yearMap);
-        if (years.length > 0) dom.selectYear.value = years[0];
-        populateMonths(yearMap);
-        log(`Loaded ${archives.length} monthly archives.`);
-      } catch (err) {
-        log(`Error loading archives: ${err.message}`);
-      } finally {
-        dom.btnLoadGames.disabled = false;
+
+        const years = [...new Set(archiveData.map(d => d.year))];
+        const ySel = document.getElementById('year');
+        ySel.innerHTML = "";
+        years.forEach(y => ySel.add(new Option(y, y)));
+
+        ySel.onchange = () => {
+          const mSel = document.getElementById('month');
+          mSel.innerHTML = "";
+          archiveData
+            .filter(d => d.year === ySel.value)
+            .forEach(d => {
+              mSel.add(new Option(d.month, d.month));
+            });
+        };
+
+        if (years.length > 0) ySel.onchange();
+      } catch (e) {
+        log("Failed to load archives.");
       }
     }
 
-    function populateMonths(yearMap) {
-      const year = dom.selectYear.value;
-      const months = (yearMap[year] || []).sort((a, b) => b - a);
-      dom.selectMonth.innerHTML = "";
-      months.forEach((m) => {
-        const opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
-        dom.selectMonth.appendChild(opt);
+    document.getElementById('btnLoad').onclick = async () => {
+      const u = document.getElementById('player').value;
+      const y = document.getElementById('year').value;
+      const m = document.getElementById('month').value;
+      log(`Loading ${y}/${m}...`);
+      const res = await fetch(`https://api.chess.com/pub/player/${u}/games/${y}/${m}`);
+      const data = await res.json();
+      const gList = document.getElementById('gameList');
+      gList.innerHTML = "";
+      data.games.forEach((g, i) => {
+        const opt = new Option(`${new Date(g.end_time * 1000).toLocaleDateString()} vs ${g.white.username === u ? g.black.username : g.white.username}`, i);
+        opt.dataset.pgn = g.pgn;
+        gList.add(opt);
       });
-    }
+    };
 
-    async function loadGames() {
-      const player = dom.player.value.trim();
-      const year = dom.selectYear.value;
-      const month = dom.selectMonth.value;
-      if (!player || !year || !month) {
-        alert("Please select player, year and month.");
-        return;
-      }
-      dom.btnLoadGames.disabled = true;
-      dom.btnAnalyze.disabled = true;
-      dom.selectGame.innerHTML = "";
-      log(`Fetching games for ${player} ${year}/${month} ...`);
-      try {
-        const data = await fetchJson(`${ARCHIVE_URL}/${player}/games/${year}/${month}`);
-        const games = data.games || [];
-        games.forEach((game, idx) => {
-          const opt = document.createElement("option");
-          const date = new Date(game.end_time * 1000).toISOString().slice(0, 10);
-          const vs = game.white.username.toLowerCase() === player.toLowerCase() ? game.black.username : game.white.username;
-          const result = game.white.username.toLowerCase() === player.toLowerCase() ? game.white.result : game.black.result;
-          opt.value = idx;
-          opt.textContent = `${date} vs ${vs} (${result})`;
-          opt.dataset.url = game.url;
-          opt.dataset.pgn = game.pgn;
-          dom.selectGame.appendChild(opt);
-        });
-        dom.btnAnalyze.disabled = games.length === 0;
-        log(`Loaded ${games.length} games.`);
-      } catch (err) {
-        log(`Error loading games: ${err.message}`);
-      } finally {
-        dom.btnLoadGames.disabled = false;
-      }
-    }
+    /**
+     * Main analysis logic: stop at first significant eval change.
+     */
+    document.getElementById('btnAnalyze').onclick = async () => {
+      const sel = document.getElementById('gameList').selectedOptions[0];
+      if (!sel) return alert("Select a game!");
 
-    function getSelectedGame() {
-      const sel = dom.selectGame.selectedOptions[0];
-      if (!sel) return null;
-      return {
-        pgn: sel.dataset.pgn,
-        url: sel.dataset.url,
-        label: sel.textContent,
-      };
-    }
-
-    async function analyzeGame() {
-      const selected = getSelectedGame();
-      if (!selected) {
-        alert("Please select a game first.");
-        return;
-      }
-      const user = dom.inputUser.value.trim() || dom.player.value.trim();
-      const threshold = Number(dom.inputThreshold.value) || 150;
-      const depth = Number(dom.inputDepth.value) || 12;
-      dom.btnAnalyze.disabled = true;
-      log(`Analyzing game: ${selected.label}`);
-
-      const header = {};
-      selected.pgn.split("\n").forEach((line) => {
-        const match = line.match(/^\[(\w+)\s+"(.+)"\]$/);
-        if (match) header[match[1]] = match[2];
-      });
-      const userLower = user.toLowerCase();
-      const userColor = header.White && header.White.toLowerCase() === userLower ? "white" : header.Black && header.Black.toLowerCase() === userLower ? "black" : null;
-
+      const user = document.getElementById('player').value.toLowerCase();
+      const margin = parseInt(document.getElementById('margin').value);
       const chess = new Chess();
-      chess.load_pgn(selected.pgn);
+      chess.load_pgn(sel.dataset.pgn);
       const history = chess.history({ verbose: true });
+
       chess.reset();
-
-      const puzzlesFound = [];
-      let lastScore = null;
-
-      // Evaluate starting position to establish baseline
-      const startEval = await engineEval(chess.fen(), depth);
-      lastScore = startEval.score;
-      log(`Starting evaluation: ${Math.round(lastScore)} cp`);
+      let last_eval = 0;
+      log("Analyzing move by move...");
 
       for (let i = 0; i < history.length; i++) {
         const move = history[i];
-        const fenBefore = chess.fen();
-        const side = chess.turn() === "w" ? "white" : "black";
-        const isUserMove = userColor ? userColor === side : false;
+        const fen_before = chess.fen();
+        const side = chess.turn(); // 'w' or 'b'
 
-        const best = await engineEval(fenBefore, depth);
-        if (!best || best.score === null) {
-          log(`Engine did not return a score for move ${i + 1}.`);
-        }
-        const bestScore = best.score;
-        const bestMove = best.move;
+        const current_eval = await evaluate(fen_before, 12);
+        console.log(current_eval);
 
-        const opportunity = Math.abs(bestScore - lastScore);
+        // Difference from the previous position's expected outcome
+        const diff = Math.abs(current_eval - last_eval);
 
-        // play the actual move
-        chess.move(move.san, { sloppy: true });
-        const actualEval = (await engineEval(chess.fen(), depth)).score;
-        const missed = Math.abs(bestScore - actualEval);
-
-        const shouldCreateMissed = isUserMove && bestMove && move.san !== bestMove && missed >= threshold;
-        const shouldCreateOpportunity = opportunity >= threshold;
-
-        if (shouldCreateMissed || shouldCreateOpportunity) {
+        if (diff >= margin) {
+          log(`Found blindspot at move ${i + 1}!`);
           const puzzle = {
-            id: `${Date.now()}-${i}`,
-            gameId: selected.label,
-            gameUrl: selected.url,
-            moveNumber: i + 1,
-            side,
-            fen: fenBefore,
-            bestMove,
-            gain: Math.round(shouldCreateMissed ? missed : opportunity),
-            threshold,
-            createdAt: new Date().toISOString(),
-            reason: shouldCreateMissed ? "missed" : "opportunity",
+            fen: fen_before,
+            gain: (diff / 100).toFixed(1),
+            side: side === 'w' ? 'White' : 'Black',
+            solution: move.san,
+            id: Date.now()
           };
-          puzzlesFound.push(puzzle);
-          log(`Puzzle found at move ${i + 1} (${side}) ${puzzle.reason} +${puzzle.gain} cp`);
+          save_puzzle(puzzle);
+          show_puzzle(puzzle);
+          return; // Stop at first occurrence
         }
 
-        lastScore = actualEval;
+        chess.move(move);
+        last_eval = current_eval;
       }
+      log("No blindspots found in this game with current margin.");
+    };
 
-      if (puzzlesFound.length === 0) {
-        log("No puzzles found for the selected threshold.");
-      }
-
-      puzzles = loadPuzzles().concat(puzzlesFound);
-      savePuzzles();
-      renderPuzzleList();
-      dom.btnAnalyze.disabled = false;
-      if (puzzlesFound.length > 0) {
-        selectedPuzzleIndex = puzzles.length - puzzlesFound.length;
-        renderSelectedPuzzle();
-      }
+    function save_puzzle(p) {
+      const existing = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      existing.push(p);
+      localStorage.setItem('chess_puzzles', JSON.stringify(existing));
+      render_saved_puzzles();
     }
 
-    function saveConfig() {
-      const cfg = {
-        user: dom.inputUser.value.trim(),
-        threshold: dom.inputThreshold.value,
-        depth: dom.inputDepth.value,
-      };
-      localStorage.setItem("chess_blindspot_config", JSON.stringify(cfg));
-      log("Config saved.");
-    }
-
-    function loadConfig() {
-      const raw = localStorage.getItem("chess_blindspot_config");
-      if (!raw) return;
-      try {
-        const cfg = JSON.parse(raw);
-        if (cfg.user) dom.inputUser.value = cfg.user;
-        if (cfg.threshold) dom.inputThreshold.value = cfg.threshold;
-        if (cfg.depth) dom.inputDepth.value = cfg.depth;
-      } catch (_) {
-        // ignore
-      }
-    }
-
-    function clearPuzzles() {
-      if (!confirm("Clear all saved puzzles?")) return;
-      puzzles = [];
-      savePuzzles();
-      renderPuzzleList();
-      selectedPuzzleIndex = -1;
-      renderSelectedPuzzle();
-      log("Cleared saved puzzles.");
-    }
-
-    function init() {
-      initBoard();
-      loadConfig();
-      puzzles = loadPuzzles();
-      renderPuzzleList();
-      renderSelectedPuzzle();
-
-      dom.btnLoadGames.addEventListener("click", loadGames);
-      dom.btnAnalyze.addEventListener("click", analyzeGame);
-      dom.btnSaveConfig.addEventListener("click", saveConfig);
-      dom.btnRefresh.addEventListener("click", () => {
-        log("Refreshing archives...");
-        loadArchives();
+    function render_saved_puzzles() {
+      const container = document.getElementById('puzzles');
+      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      container.innerHTML = "<h3>Saved Puzzles</h3>";
+      items.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'puzzle-item';
+        div.innerHTML = `<span>${p.side} to gain ${p.gain}</span>`;
+        const btn = document.createElement('button');
+        btn.textContent = "Load";
+        btn.style.width = "auto";
+        btn.onclick = () => show_puzzle(p);
+        div.appendChild(btn);
+        container.appendChild(div);
       });
-      dom.btnClear.addEventListener("click", clearPuzzles);
-      dom.btnPrev.addEventListener("click", () => {
-        if (selectedPuzzleIndex > 0) {
-          selectPuzzle(selectedPuzzleIndex - 1);
-        }
-      });
-      dom.btnNext.addEventListener("click", () => {
-        if (selectedPuzzleIndex < puzzles.length - 1) {
-          selectPuzzle(selectedPuzzleIndex + 1);
-        }
-      });
-
-      loadArchives();
     }
 
-    window.addEventListener("load", init);
+    function show_puzzle(p) {
+      state_.current_puzzle = p;
+      state_.board.position(p.fen);
+      document.getElementById('hint').innerHTML = `<strong>Hint:</strong> Find ${p.side} move to gain ${p.gain}`;
+      document.getElementById('btnSolution').style.display = 'block';
+    }
+
+    document.getElementById('btnSolution').onclick = () => {
+      alert(`The move was: ${state_.current_puzzle.solution}`);
+    };
+
+    window.onload = init;
   </script>
 </body>
 
