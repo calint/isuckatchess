@@ -338,7 +338,7 @@
       const history = game.history({ verbose: true });
       game.reset();
 
-      log(`RUN: ${sel.text}`, true);
+      log(`RUNNING ANALYSIS...`, true);
       log(`----------------------------------------------`);
 
       for (let i = 0; i < history.length; i++) {
@@ -346,7 +346,7 @@
         const fen = game.fen();
         const side = game.turn();
 
-        // Analyze before move
+        // 1. Get Engine Best Move BEFORE the move was played
         const analysis = await evaluate(fen, 10);
         let targetMat = 0;
         if (matMode) {
@@ -357,7 +357,12 @@
           targetMat = get_material_score(sim);
         }
 
-        // Execute played move
+        // 2. Log what the engine wanted vs what was played
+        const moveNum = Math.floor(i / 2) + 1;
+        const prefix = (side === 'w' ? `${moveNum}.` : `...`).padEnd(4);
+        log(`${prefix} Played: ${move.san.padEnd(6)} | Best: ${analysis.san.padEnd(6)}`);
+
+        // 3. Execute played move to update board/eval
         game.move(move);
         state_.board.position(game.fen());
         await new Promise(r => setTimeout(r, 50));
@@ -365,25 +370,26 @@
         const post = await evaluate(game.fen(), 10);
         update_eval_bar(post.score);
 
-        let flag = false, label = "";
+        // 4. Blindspot Logic
+        let flag = false;
+        let label = "";
+
         if (matMode) {
           const currentMat = get_material_score(game);
           const gap = (side === 'w' ? 1 : -1) * (targetMat - currentMat);
           flag = gap >= 1;
-          label = `Missed: ${gap}pt`;
-          log(`${(i + 1).toString().padStart(2)}: ${move.san.padEnd(5)} | Mat: ${currentMat} vs Best Exp: ${targetMat}`);
+          label = `Missed +${gap} Material`;
         } else {
           const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
           flag = gap >= margin;
-          label = `Loss: ${gap}CP`;
-          log(`${(i + 1).toString().padStart(2)}: ${move.san.padEnd(5)} | Eval: ${post.score} vs Best: ${analysis.score}`);
+          label = `Eval Drop: ${gap}CP`;
         }
 
         const isUserTurn = (side === 'w' && w === user) || (side === 'b' && b === user);
         const playedBestMove = (move.from + move.to) === analysis.best.substring(0, 4);
 
         if (isUserTurn && flag && !playedBestMove) {
-          log(`!!! BLINDSPOT FOUND: ${label}`);
+          log(`   >> BLINDSPOT: ${label}`, true);
           const newPuzzle = {
             fen: fen,
             gain: label,
@@ -394,10 +400,11 @@
           };
           save_puzzle(newPuzzle);
           show_puzzle(newPuzzle);
-          return; // Stop analysis and train
+          return; // Pause to let user train
         }
       }
-      log("Analysis complete. No blindspots found.");
+      log("----------------------------------------------");
+      log("Analysis complete.");
     };
 
     function render_saved_puzzles() {
