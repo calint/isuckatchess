@@ -400,18 +400,36 @@
         const post = await evaluate(game.fen(), 10);
         update_eval_bar(post.score);
 
+        // 4. Blindspot Logic
         let flag = false;
         let label = "";
 
         if (matMode) {
-          const currentMat = get_material_score(game);
-          const gap = (side === 'w' ? 1 : -1) * (targetMat - currentMat);
-          flag = gap >= 1;
-          label = `Missed +${gap} Material`;
-        } else {
-          const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
-          flag = gap >= margin;
-          label = `Eval Drop: ${gap}CP`;
+          // 1. Current material on board right now
+          const currentBoardMat = get_material_score(game);
+
+          // 2. What the engine achieves after plies
+          const engineSim = new Chess(fen);
+          const pvMoves = analysis.pv.split(" ");
+          // Only simulate up to the requested plies
+          for (let j = 0; j < Math.min(plies, pvMoves.length); ++j) {
+            const m = pvMoves[j];
+            if (m.length >= 4) engineSim.move({ from: m.substring(0, 2), to: m.substring(2, 4), promotion: m[4] || 'q' });
+          }
+          const targetMat = get_material_score(engineSim);
+
+          // 3. Difference between Engine Future and Current Board
+          const engineGain = (side === 'w' ? 1 : -1) * (targetMat - currentBoardMat);
+
+          // 4. Check what the player actually achieved in the NEXT move (immediate drop)
+          // We use 'post' evaluation which we already have from the move just played
+          const immediateGameMat = get_material_score(game);
+          const gameGain = (side === 'w' ? 1 : -1) * (immediateGameMat - currentBoardMat);
+
+          // FLAG ONLY IF: 
+          // Engine gains material (>= 1) AND Engine does better than what you played
+          flag = (engineGain >= 1) && (engineGain > gameGain);
+          label = `Missed +${engineGain} Material`;
         }
 
         const isUserTurn = (side === 'w' && whitePlayer === user) || (side === 'b' && blackPlayer === user);
@@ -437,6 +455,7 @@
       }
       log("----------------------------------------------");
       log("Analysis complete.");
+      log("No blind spot found with current settings.", true);
     };
 
     function render_saved_puzzles() {
