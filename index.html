@@ -135,7 +135,6 @@
   <main>
     <div style="display: flex; flex-direction: column; gap: 2rem;">
       <section class="panel">
-        <h2 style="margin-top:0">Control Center</h2>
         <div style="display:flex; gap:0.5rem">
           <input id="player" type="text" value="calint" placeholder="Username" style="flex:2">
           <select id="year" style="flex:1"></select>
@@ -168,7 +167,6 @@
     </div>
 
     <section class="panel">
-      <h2 style="margin-top:0">Training</h2>
       <div id="hint" style="background: #fff9c4; padding: 0.5rem; border-radius: 4px;">Select a puzzle to begin...</div>
       <div class="board-container">
         <div id="eval-bar">
@@ -455,25 +453,59 @@
       document.getElementById('hint').innerHTML = `<strong>Hint:</strong> Find ${p.side} move for ${p.gain}`;
     }
 
-    document.getElementById('btnSolution').onclick = () => {
+    document.getElementById('btnSolution').onclick = async () => {
       if (!state_.current_puzzle) return;
+
+      // 1. Show the text for reference
       const st = document.getElementById('solutionText');
       st.innerHTML = `<strong>Solution:</strong> ${state_.current_puzzle.solution}`;
       st.style.display = 'block';
+
+      // 2. Reset the board to the puzzle start
+      state_.training_game.load(state_.current_puzzle.fen);
+      state_.board.position(state_.current_puzzle.fen);
+
+      // 3. Play through the solution moves with a delay
+      const moves = state_.current_puzzle.solution.split(" ");
+      for (const move of moves) {
+        if (!move) continue;
+
+        // Wait 600ms between moves so the user can follow
+        await new Promise(resolve => setTimeout(resolve, 600));
+
+        const result = state_.training_game.move(move);
+        if (result) {
+          state_.board.position(state_.training_game.fen());
+          update_eval_bar_from_fen(state_.training_game.fen());
+        }
+      }
     };
 
     document.getElementById('btnPrev').onclick = () => {
-      state_.training_game.undo();
-      state_.board.position(state_.training_game.fen());
+      if (!state_.current_puzzle) return;
+
+      const move = state_.training_game.undo();
+      if (move) {
+        state_.board.position(state_.training_game.fen());
+        // update eval bar for the new position
+        update_eval_bar_from_fen(state_.training_game.fen());
+      }
     };
 
     document.getElementById('btnNext').onclick = () => {
-      if (!state_.current_puzzle) return;
-      const m = state_.current_puzzle.solution.split(" ");
-      const idx = state_.training_game.history().length;
-      if (idx < m.length) {
-        state_.training_game.move(m[idx]);
-        state_.board.position(state_.training_game.fen());
+      if (!state_.current_puzzle || !state_.current_puzzle.solution) return;
+
+      const solutionMoves = state_.current_puzzle.solution.split(" ");
+      const currentHistory = state_.training_game.history();
+      const idx = currentHistory.length;
+
+      if (idx < solutionMoves.length) {
+        const move = state_.training_game.move(solutionMoves[idx]);
+        if (move) {
+          state_.board.position(state_.training_game.fen());
+          // update eval bar for the new position
+          update_eval_bar_from_fen(state_.training_game.fen());
+        }
       }
     };
 
