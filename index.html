@@ -348,6 +348,7 @@
     document.getElementById('btnAnalyze').onclick = async () => {
       const sel = document.getElementById('gameList').selectedOptions[0];
       if (!sel) return alert("Select a game!");
+
       document.getElementById('log').innerHTML = "";
       const user = document.getElementById('player').value.toLowerCase();
       const margin = parseInt(document.getElementById('margin').value);
@@ -356,8 +357,17 @@
 
       const game = new Chess();
       game.load_pgn(sel.dataset.pgn);
-      const w = (game.header().White || "").toLowerCase();
-      const b = (game.header().Black || "").toLowerCase();
+
+      // Extract Metadata for the puzzle heading
+      const whitePlayer = game.header().White || "Unknown";
+      const blackPlayer = game.header().Black || "Unknown";
+      const gameDate = game.header().Date || "Unknown";
+
+      // 1. Determine orientation: If user is Black, flip board; otherwise White
+      const userSide = (blackPlayer === user) ? 'black' : 'white';
+      state_.board.orientation(userSide);
+      log(`Orientation set to ${userSide} (User: ${user})`);
+
       const history = game.history({ verbose: true });
       game.reset();
 
@@ -369,7 +379,6 @@
         const fen = game.fen();
         const side = game.turn();
 
-        // 1. Get Engine Best Move BEFORE the move was played
         const analysis = await evaluate(fen, 10);
         let targetMat = 0;
         if (matMode) {
@@ -380,12 +389,10 @@
           targetMat = get_material_score(sim);
         }
 
-        // 2. Log what the engine wanted vs what was played
         const moveNum = Math.floor(i / 2) + 1;
         const prefix = (side === 'w' ? `${moveNum}.` : `...`).padEnd(4);
         log(`${prefix} Played: ${move.san.padEnd(6)} | Best: ${analysis.san.padEnd(6)}`);
 
-        // 3. Execute played move to update board/eval
         game.move(move);
         state_.board.position(game.fen());
         await new Promise(r => setTimeout(r, 50));
@@ -393,7 +400,6 @@
         const post = await evaluate(game.fen(), 10);
         update_eval_bar(post.score);
 
-        // 4. Blindspot Logic
         let flag = false;
         let label = "";
 
@@ -408,7 +414,7 @@
           label = `Eval Drop: ${gap}CP`;
         }
 
-        const isUserTurn = (side === 'w' && w === user) || (side === 'b' && b === user);
+        const isUserTurn = (side === 'w' && whitePlayer === user) || (side === 'b' && blackPlayer === user);
         const playedBestMove = (move.from + move.to) === analysis.best.substring(0, 4);
 
         if (isUserTurn && flag && !playedBestMove) {
@@ -419,11 +425,14 @@
             side: side === 'w' ? 'white' : 'black',
             solution: convertPvToAlgebraic(fen, analysis.pv),
             id: Date.now(),
-            solved: false
+            solved: false,
+            // Add these new fields:
+            players: `${whitePlayer} vs ${blackPlayer}`,
+            date: gameDate
           };
           save_puzzle(newPuzzle);
           show_puzzle(newPuzzle);
-          return; // Pause to let user train
+          return;
         }
       }
       log("----------------------------------------------");
@@ -435,16 +444,29 @@
       let items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
       items.sort((a, b) => a.solved - b.solved);
       container.innerHTML = "<h3>Saved Puzzles</h3>";
+
       items.forEach(p => {
         const div = document.createElement('div');
         div.className = 'puzzle-item';
         div.style.opacity = p.solved ? "0.6" : "1";
-        div.innerHTML = `<div>${p.side} (${p.gain}) ${p.solved ? '✅' : ''}</div>
-          <div style="display:flex; gap:4px;">
-            <button onclick="load_puzzle_by_id(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px;">Load</button>
-            ${!p.solved ? `<button onclick="mark_solved(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#28a745">Solved</button>` : ''}
-            <button onclick="delete_puzzle(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#dc3545">Delete</button>
-          </div>`;
+        div.style.display = "block"; // Changed to block for better multi-line layout
+
+        // Determine heading text: Use players/date if available, otherwise fallback to side/gain
+        const heading = p.players ? `<strong>${p.players}</strong> (${p.date})` : `${p.side} (${p.gain})`;
+        const subtext = p.players ? `<div style="font-size: 0.75rem; color: #555;">${p.side} to move — ${p.gain}</div>` : '';
+
+        div.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div>${heading} ${p.solved ? '✅' : ''}</div>
+          ${subtext}
+        </div>
+        <div style="display:flex; gap:4px;">
+          <button onclick="load_puzzle_by_id(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px;">Load</button>
+          ${!p.solved ? `<button onclick="mark_solved(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#28a745">Solved</button>` : ''}
+          <button onclick="delete_puzzle(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#dc3545">Delete</button>
+        </div>
+      </div>`;
         container.appendChild(div);
       });
     }
@@ -462,8 +484,8 @@
       state_.board = Chessboard('board', {
         draggable: true,
         position: p.fen,
-        orientation: p.side,
-        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+        orientation: p.side, // This ensures the user is looking from the correct perspective
+        pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
         onDrop: (s, t) => {
           const move = state_.training_game.move({ from: s, to: t, promotion: 'q' });
           if (move) {
