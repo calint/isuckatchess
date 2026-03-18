@@ -241,29 +241,52 @@
       try {
         const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
         const data = await res.json();
-        const archives = data.archives.map(url => { const p = url.split('/'); return { year: p[p.length - 2], month: p[p.length - 1] }; });
+
+        // Extract year/month and sort archives by year desc, then month desc
+        const archives = data.archives.map(url => {
+          const p = url.split('/');
+          return { year: p[p.length - 2], month: p[p.length - 1] };
+        }).sort((a, b) => b.year - a.year || b.month - a.month);
+
         const years = [...new Set(archives.map(a => a.year))];
         const ySel = document.getElementById('year');
         ySel.innerHTML = "";
+
+        // Years are already unique and sorted due to the archive sort above
         years.forEach(y => ySel.add(new Option(y, y)));
+
         ySel.onchange = () => {
           const mSel = document.getElementById('month');
           mSel.innerHTML = "";
-          archives.filter(a => a.year === ySel.value).forEach(a => mSel.add(new Option(a.month, a.month)));
+          // Filter months for the selected year and ensure they stay descending
+          archives
+            .filter(a => a.year === ySel.value)
+            .forEach(a => mSel.add(new Option(a.month, a.month)));
         };
+
         if (years.length > 0) ySel.onchange();
-      } catch (e) { log("Failed to load archives."); }
+      } catch (e) {
+        log("Failed to load archives.");
+      }
     }
 
     document.getElementById('btnLoad').onclick = async () => {
-      const u = document.getElementById('player').value, y = document.getElementById('year').value, m = document.getElementById('month').value;
+      const u = document.getElementById('player').value;
+      const y = document.getElementById('year').value;
+      const m = document.getElementById('month').value;
+
       log(`Fetching ${y}/${m}...`);
       const res = await fetch(`https://api.chess.com/pub/player/${u}/games/${y}/${m}`);
       const data = await res.json();
       const list = document.getElementById('gameList');
       list.innerHTML = "";
-      data.games.forEach((g, i) => {
-        const opt = new Option(`${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} vs ${g.black.username}`, i);
+
+      // Reverse the array so the most recent game is at the top of the list
+      const games = data.games.reverse();
+
+      games.forEach((g, i) => {
+        const dateStr = new Date(g.end_time * 1000).toLocaleDateString();
+        const opt = new Option(`${dateStr}: ${g.white.username} vs ${g.black.username}`, i);
         opt.dataset.pgn = g.pgn;
         list.add(opt);
       });
