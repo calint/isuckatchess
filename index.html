@@ -503,11 +503,15 @@
       state_.board = Chessboard('board', {
         draggable: true,
         position: p.fen,
-        orientation: p.side, // This ensures the user is looking from the correct perspective
+        orientation: p.side,
         pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
         onDrop: (s, t) => {
           const move = state_.training_game.move({ from: s, to: t, promotion: 'q' });
+
           if (move) {
+            // This line ensures the Rook snaps to the correct spot on castle
+            // or that pieces disappear on capture.
+            setTimeout(() => state_.board.position(state_.training_game.fen()), 250);
             update_eval_bar_from_fen(state_.training_game.fen());
           } else {
             return 'snapback';
