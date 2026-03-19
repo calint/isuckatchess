@@ -137,6 +137,7 @@
       <section class="panel">
         <div style="display:flex; gap:0.5rem">
           <input id="player" type="text" value="calint" placeholder="Username" style="flex:2">
+          <button id="btnReload" style="flex:0.5; background: #607d8b; padding: 0;">↻</button>
           <select id="year" style="flex:1"></select>
           <select id="month" style="flex:1"></select>
         </div>
@@ -236,13 +237,28 @@
       if (p) { p.solved = true; localStorage.setItem('chess_puzzles', JSON.stringify(items)); render_saved_puzzles(); }
     }
 
+    // Add this to your script, preferably inside the init() or with other listeners
+    document.getElementById('btnReload').onclick = () => {
+      const user = document.getElementById('player').value.trim();
+      if (!user) return;
+
+      // Clear existing data to avoid confusion
+      document.getElementById('year').innerHTML = "";
+      document.getElementById('month').innerHTML = "";
+      document.getElementById('gameList').innerHTML = "";
+      log(`Reloading archives for user: ${user}...`);
+
+      load_archives();
+    };
+
+    // Slightly updated load_archives to handle errors better
     async function load_archives() {
-      const user = document.getElementById('player').value;
+      const user = document.getElementById('player').value.trim();
       try {
         const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
-        const data = await res.json();
+        if (!res.ok) throw new Error("User not found");
 
-        // Extract year/month and sort archives by year desc, then month desc
+        const data = await res.json();
         const archives = data.archives.map(url => {
           const p = url.split('/');
           return { year: p[p.length - 2], month: p[p.length - 1] };
@@ -252,21 +268,24 @@
         const ySel = document.getElementById('year');
         ySel.innerHTML = "";
 
-        // Years are already unique and sorted due to the archive sort above
         years.forEach(y => ySel.add(new Option(y, y)));
 
         ySel.onchange = () => {
           const mSel = document.getElementById('month');
           mSel.innerHTML = "";
-          // Filter months for the selected year and ensure they stay descending
           archives
             .filter(a => a.year === ySel.value)
             .forEach(a => mSel.add(new Option(a.month, a.month)));
         };
 
-        if (years.length > 0) ySel.onchange();
+        if (years.length > 0) {
+          ySel.onchange();
+          log(`Archives loaded for ${user}.`);
+        } else {
+          log(`No game history found for ${user}.`);
+        }
       } catch (e) {
-        log("Failed to load archives.");
+        log(`Error: Could not find archives for "${user}".`);
       }
     }
 
@@ -286,7 +305,14 @@
 
       games.forEach((g, i) => {
         const dateStr = new Date(g.end_time * 1000).toLocaleDateString();
-        const opt = new Option(`${dateStr}: ${g.white.username} vs ${g.black.username}`, i);
+
+        // Extract ratings from the API response objects
+        const wRating = g.white.rating || "?";
+        const bRating = g.black.rating || "?";
+
+        const label = `${dateStr}: ${g.white.username} (${wRating}) vs ${g.black.username} (${bRating})`;
+
+        const opt = new Option(label, i);
         opt.dataset.pgn = g.pgn;
         list.add(opt);
       });
@@ -358,9 +384,11 @@
       const game = new Chess();
       game.load_pgn(sel.dataset.pgn);
 
-      // Extract Metadata for the puzzle heading
+      // Extract Metadata including Ratings
       const whitePlayer = game.header().White || "Unknown";
+      const whiteRating = game.header().WhiteElo || "?";
       const blackPlayer = game.header().Black || "Unknown";
+      const blackRating = game.header().BlackElo || "?";
       const gameDate = game.header().Date || "Unknown";
 
       // 1. Determine orientation: If user is Black, flip board; otherwise White
@@ -444,8 +472,8 @@
             solution: convertPvToAlgebraic(fen, analysis.pv),
             id: Date.now(),
             solved: false,
-            // Add these new fields:
-            players: `${whitePlayer} vs ${blackPlayer}`,
+            // Updated players string to include ratings
+            players: `${whitePlayer} (${whiteRating}) vs ${blackPlayer} (${blackRating})`,
             date: gameDate
           };
           save_puzzle(newPuzzle);
@@ -468,16 +496,18 @@
         const div = document.createElement('div');
         div.className = 'puzzle-item';
         div.style.opacity = p.solved ? "0.6" : "1";
-        div.style.display = "block"; // Changed to block for better multi-line layout
+        div.style.display = "block";
 
-        // Determine heading text: Use players/date if available, otherwise fallback to side/gain
-        const heading = p.players ? `<strong>${p.players}</strong> (${p.date})` : `${p.side} (${p.gain})`;
+        // Use a smaller font for the player/rating line if it's long
+        const heading = p.players ? `<span style="font-size: 0.9rem;"><strong>${p.players}</strong></span>` : `${p.side} (${p.gain})`;
+        const dateText = p.date ? `<div style="font-size: 0.75rem; color: #777;">${p.date}</div>` : '';
         const subtext = p.players ? `<div style="font-size: 0.75rem; color: #555;">${p.side} to move — ${p.gain}</div>` : '';
 
         div.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <div>
+        <div style="flex: 1; padding-right: 10px;">
           <div>${heading} ${p.solved ? '✅' : ''}</div>
+          ${dateText}
           ${subtext}
         </div>
         <div style="display:flex; gap:4px;">
