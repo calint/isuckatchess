@@ -162,7 +162,13 @@
           <input id="materialOnly" type="checkbox" style="width: auto; margin: 0;" checked>
           <span style="font-size: 0.85rem; font-weight: 600;">Focus on Material Gains only</span>
         </label>
-        <button id="btnAnalyze" style="margin-top: 1rem; background: #2e7d32;">Start Analysis</button>
+
+        <div style="display: flex; gap: 10px; margin-top: 1rem;">
+          <button id="btnAnalyze" style="flex: 2; background: #2e7d32; margin: 0;">Analyze Selected</button>
+          <button id="btnBatch" style="flex: 2; background: #1565c0; margin: 0;">Batch All</button>
+          <button id="btnStop" style="flex: 1; background: #c62828; margin: 0; display: none;">Stop</button>
+        </div>
+
         <div id="log">Ready.</div>
       </section>
     </div>
@@ -192,7 +198,14 @@
   <script src="lib/chess.min.js"></script>
 
   <script>
-    const state_ = { engine: null, board: null, current_puzzle: null, training_game: new Chess() };
+    const state_ = {
+      engine: null,
+      board: null,
+      current_puzzle: null,
+      training_game: new Chess(),
+      isBatchRunning: false,
+      analyzedGames: new Set()
+    };
 
     function init() {
       state_.board = Chessboard('board', {
@@ -207,7 +220,9 @@
     function setupEventListeners() {
       document.getElementById('btnReload').onclick = reloadUserArchives;
       document.getElementById('btnLoad').onclick = loadGamesForMonth;
-      document.getElementById('btnAnalyze').onclick = runAnalysis;
+      document.getElementById('btnAnalyze').onclick = () => runAnalysis(false);
+      document.getElementById('btnBatch').onclick = runBatchAnalysis;
+      document.getElementById('btnStop').onclick = () => { state_.isBatchRunning = false; };
       document.getElementById('btnSolution').onclick = playSolution;
       document.getElementById('btnPrev').onclick = stepBack;
       document.getElementById('btnNext').onclick = stepForward;
@@ -215,6 +230,7 @@
 
     function reloadUserArchives() {
       document.getElementById('gameList').innerHTML = "";
+      state_.analyzedGames.clear();
       loadArchives();
     }
 
@@ -341,10 +357,43 @@
       return san.join(" ");
     }
 
-    async function runAnalysis() {
+    async function runBatchAnalysis() {
+      const list = document.getElementById('gameList');
+      if (list.options.length === 0) return alert("Fetch games first!");
+
+      state_.isBatchRunning = true;
+      document.getElementById('btnStop').style.display = 'block';
+      document.getElementById('btnBatch').disabled = true;
+
+      for (let i = 0; i < list.options.length; i++) {
+        if (!state_.isBatchRunning) break;
+
+        const option = list.options[i];
+        const pgn = option.dataset.pgn;
+
+        if (state_.analyzedGames.has(pgn)) continue;
+
+        list.selectedIndex = i;
+        log(`Batch analyzing game ${i + 1}/${list.options.length}...`, true);
+
+        const found = await runAnalysis(true);
+        state_.analyzedGames.add(pgn);
+      }
+
+      state_.isBatchRunning = false;
+      document.getElementById('btnStop').style.display = 'none';
+      document.getElementById('btnBatch').disabled = false;
+      log("Batch analysis finished.");
+    }
+
+    async function runAnalysis(isBatch = false) {
       const sel = document.getElementById('gameList').selectedOptions[0];
-      if (!sel) return alert("Select a game!");
-      document.getElementById('log').innerHTML = "";
+      if (!sel) {
+        if (!isBatch) alert("Select a game!");
+        return false;
+      }
+
+      if (!isBatch) document.getElementById('log').innerHTML = "";
       const user = document.getElementById('player').value.toLowerCase();
       const margin = parseInt(document.getElementById('margin').value);
       const matMode = document.getElementById('materialOnly').checked;
@@ -357,18 +406,20 @@
       const uSide = (bP.toLowerCase() === user) ? 'black' : 'white';
 
       state_.board.orientation(uSide);
-      log(`RUNNING ANALYSIS (${uSide})...`, true);
+      if (!isBatch) log(`RUNNING ANALYSIS (${uSide})...`, true);
 
       const history = game.history({ verbose: true });
       game.reset();
 
       for (let i = 0; i < history.length; ++i) {
+        if (isBatch && state_.isBatchRunning === false) return false;
+
         const move = history[i], fen = game.fen(), side = game.turn();
         const analysis = await evaluate(fen, 10);
 
         game.move(move);
         state_.board.position(game.fen());
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise(r => setTimeout(r, isBatch ? 10 : 50));
         const post = await evaluate(game.fen(), 10);
         updateEvalBar(post.score);
 
@@ -386,17 +437,18 @@
 
         const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
         if (isUserTurn && flag && (move.from + move.to) !== analysis.best.substring(0, 4)) {
-          log(`   >> BLINDSPOT: ${label}`, true);
+          log(`   >> BLINDSPOT FOUND: ${label}`, true);
           const p = {
             fen, side: side === 'w' ? 'white' : 'black', gain: label, id: Date.now(), solved: false,
             solution: convertPvToAlgebraic(fen, analysis.pv), players: `${wP} (${wR}) vs ${bP} (${bR})`, date: game.header().Date
           };
           savePuzzle(p);
           showPuzzle(p);
-          return;
+          return true;
         }
       }
-      log("No blind spot found with current settings.", true);
+      if (!isBatch) log("No blind spot found in this game.", true);
+      return false;
     }
 
     function savePuzzle(p) {
