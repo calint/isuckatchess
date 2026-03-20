@@ -171,6 +171,12 @@
     </div>
 
     <section class="panel">
+      <div id="puzzle-header"
+        style="background: #333; color: #fff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; font-size: 0.9rem; border-left: 4px solid #ffca28;">
+        <div id="ph-players" style="font-weight: bold; font-size: 1.1rem; margin-bottom: 4px;"></div>
+        <div id="ph-meta" style="color: #aaa; font-size: 0.8rem; margin-bottom: 8px;"></div>
+        <div id="ph-eval" style="color: #ffca28; font-weight: bold;"></div>
+      </div>
       <div id="hint" style="background: #fff9c4; padding: 0.5rem; border-radius: 4px;">Select a puzzle to begin...</div>
       <div class="board-container">
         <div id="eval-bar">
@@ -429,16 +435,26 @@
         // Pure Eval Drop Logic
         const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
         const flag = gap >= margin;
-        const label = `Eval Drop: ${gap} CP`;
+        const label = `evaluation change: ${gap} CP`;
 
         const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
 
         // Trigger if it's the user's turn, the gap exceeds margin, and they didn't play the engine's best move
         if (isUserTurn && flag && (move.from + move.to) !== analysis.best.substring(0, 4)) {
           log(`   >> BLINDSPOT FOUND: ${label}`, true);
+
+          // Get the date from the game header or the selection list
+          const gameDate = game.header().Date || game.header().date || sel.textContent.split(':')[0] || "Unknown Date";
+
           const p = {
-            fen, side: side === 'w' ? 'white' : 'black', gain: label, id: Date.now(), solved: false,
-            solution: convertPvToAlgebraic(fen, analysis.pv), players: `${wP} (${wR}) vs ${bP} (${bR})`, date: game.header().Date
+            fen,
+            side: side === 'w' ? 'white' : 'black',
+            gain: label,
+            id: Date.now() + i,
+            solved: false,
+            solution: convertPvToAlgebraic(fen, analysis.pv),
+            players: `${wP} vs ${bP}`,
+            date: gameDate // Lowercase 'd' for consistency
           };
           savePuzzle(p);
           showPuzzle(p);
@@ -499,12 +515,24 @@
       renderSavedPuzzles();
     };
 
-    function showPuzzle(p) {
+    async function showPuzzle(p) {
       state_.current_puzzle = p;
       state_.training_game.load(p.fen);
 
+      // Extract the CP value (e.g., from "Eval Drop: 250CP")
+      const cpMatch = p.gain.match(/\d+/);
+      const cpValue = cpMatch ? cpMatch[0] : "???";
+
+      const header = document.getElementById('puzzle-header');
+      header.style.display = 'block';
+
+      // Displaying the fixed metadata
+      document.getElementById('ph-players').textContent = p.players;
+      document.getElementById('ph-meta').textContent = `${p.date} | Side: ${p.side.toUpperCase()}`;
+      document.getElementById('ph-eval').textContent = `Find moves to improve position by ${cpValue} CP`;
+
+      document.getElementById('solutionText').style.display = 'none';
       const solutionMoves = p.solution.split(" ");
-      const correctFirstMove = solutionMoves[0];
 
       state_.board = Chessboard('board', {
         draggable: true,
@@ -512,53 +540,44 @@
         orientation: p.side,
         pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
         onDrop: (source, target) => {
-          // 1. Check where we are in the solution
-          const solutionMoves = p.solution.split(" ");
           const currentIdx = state_.training_game.history().length;
-
-          // 2. Create a temporary move to see what the SAN would be
           const tempGame = new Chess(state_.training_game.fen());
-          const move = tempGame.move({
-            from: source,
-            to: target,
-            promotion: 'q'
-          });
 
-          // 3. Basic chess validation
-          if (move === null) return 'snapback';
-
-          // 4. Compare against the specific move in the solution sequence
-          if (move.san !== solutionMoves[currentIdx]) {
+          // 1. Synchronous Check: Is the move legal and correct?
+          const move = tempGame.move({ from: source, to: target, promotion: 'q' });
+          if (move === null || move.san !== solutionMoves[currentIdx]) {
             document.getElementById('hint').innerHTML =
               `<span style="color: #d32f2f;"><strong>Not according to the engine.</strong> Try again!</span>`;
             return 'snapback';
           }
 
-          // 5. If correct, execute the move
-          state_.training_game.move(move.san);
-          document.getElementById('hint').innerHTML =
-            `<span style="color: #2e7d32;"><strong>Correct!</strong></span>`;
+          // 2. Async logic: Handle the engine response separately
+          (async () => {
+            state_.training_game.move(move.san);
+            document.getElementById('hint').innerHTML = `<span style="color: #2e7d32;"><strong>Correct!</strong></span>`;
 
-          // 6. Sync board and trigger engine's auto-response (the next move in the array)
-          setTimeout(() => {
             state_.board.position(state_.training_game.fen());
+            const userEval = await evaluate(state_.training_game.fen(), 10);
+            updateEvalBar(userEval.score);
 
             const nextIdx = state_.training_game.history().length;
             if (nextIdx < solutionMoves.length) {
-              setTimeout(() => {
-                state_.training_game.move(solutionMoves[nextIdx]);
-                state_.board.position(state_.training_game.fen());
-                updateEvalFromFen(state_.training_game.fen());
+              await new Promise(r => setTimeout(r, 600));
+              state_.training_game.move(solutionMoves[nextIdx]);
+              state_.board.position(state_.training_game.fen());
 
-                // If there are more moves to find, update hint
-                if (nextIdx + 1 < solutionMoves.length) {
-                  document.getElementById('hint').innerHTML = `<strong>Your Turn:</strong> Continue the sequence...`;
-                } else {
-                  document.getElementById('hint').innerHTML = `<span style="color: #2e7d32;"><strong>Puzzle Complete!</strong></span>`;
-                }
-              }, 600);
+              const postReplyEval = await evaluate(state_.training_game.fen(), 10);
+              updateEvalBar(postReplyEval.score);
+
+              const hintEl = document.getElementById('hint');
+              if (nextIdx + 1 < solutionMoves.length) {
+                hintEl.innerHTML = `<strong>Your Turn:</strong> Keep going...`;
+              } else {
+                hintEl.innerHTML = `<span style="color: #2e7d32;"><strong>Puzzle Complete!</strong></span>`;
+                markSolved(p.id);
+              }
             }
-          }, 250);
+          })();
         }
       });
 
