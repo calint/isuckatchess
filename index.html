@@ -148,20 +148,17 @@
             <select id="lookahead">
               <option value="2">2 moves</option>
               <option value="3">3 moves</option>
-              <option value="4" selected>4 moves</option>
+              <option value="4">4 moves</option>
               <option value="5">5 moves</option>
               <option value="8">8 moves</option>
+              <option value="10">10 moves</option>
+              <option value="12" selected>12 moves</option>
             </select>
           </div>
           <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: 700;">Margin (CP):</label>
-            <input id="margin" type="number" value="100">
+            <input id="margin" type="number" value="250">
           </div>
         </div>
-        <label
-          style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #eef7ff; padding: 8px; border-radius: 6px;">
-          <input id="materialOnly" type="checkbox" style="width: auto; margin: 0;" checked>
-          <span style="font-size: 0.85rem; font-weight: 600;">Focus on Material Gains only</span>
-        </label>
 
         <div style="display: flex; gap: 10px; margin-top: 1rem;">
           <button id="btnAnalyze" style="flex: 2; background: #2e7d32; margin: 0;">Analyze Selected</button>
@@ -396,8 +393,6 @@
       if (!isBatch) document.getElementById('log').innerHTML = "";
       const user = document.getElementById('player').value.toLowerCase();
       const margin = parseInt(document.getElementById('margin').value);
-      const matMode = document.getElementById('materialOnly').checked;
-      const plies = parseInt(document.getElementById('lookahead').value) * 2;
 
       const game = new Chess();
       game.load_pgn(sel.dataset.pgn);
@@ -417,25 +412,28 @@
         const move = history[i], fen = game.fen(), side = game.turn();
         const analysis = await evaluate(fen, 10);
 
+        // Convert the engine's best UCI move to SAN for readable logging
+        const bestMoveSan = convertPvToAlgebraic(fen, analysis.best).split(" ")[0];
+
         game.move(move);
         state_.board.position(game.fen());
         await new Promise(r => setTimeout(r, isBatch ? 10 : 50));
         const post = await evaluate(game.fen(), 10);
         updateEvalBar(post.score);
 
-        let flag = false, label = "";
-        if (matMode) {
-          const eGain = calculateMaterialGap(side, fen, analysis.pv, plies);
-          const gGain = (side === 'w' ? 1 : -1) * (getMaterialScore(game) - getMaterialScore(new Chess(fen)));
-          flag = (eGain >= 1) && (eGain > gGain);
-          label = `Missed +${eGain} Material`;
-        } else {
-          const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
-          flag = gap >= margin;
-          label = `Eval Drop: ${gap}CP`;
-        }
+        // Logging the comparison
+        const moveNumber = Math.floor(i / 2) + 1;
+        const movePrefix = (side === 'w') ? `${moveNumber}.` : `${moveNumber}...`;
+        log(`${movePrefix} Played: ${move.san} (${post.score}) | Engine: ${bestMoveSan} (${analysis.score})`);
+
+        // Pure Eval Drop Logic
+        const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
+        const flag = gap >= margin;
+        const label = `Eval Drop: ${gap}CP`;
 
         const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
+
+        // Trigger if it's the user's turn, the gap exceeds margin, and they didn't play the engine's best move
         if (isUserTurn && flag && (move.from + move.to) !== analysis.best.substring(0, 4)) {
           log(`   >> BLINDSPOT FOUND: ${label}`, true);
           const p = {
