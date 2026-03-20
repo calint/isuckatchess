@@ -429,7 +429,7 @@
         // Pure Eval Drop Logic
         const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
         const flag = gap >= margin;
-        const label = `Eval Drop: ${gap}CP`;
+        const label = `Eval Drop: ${gap} CP`;
 
         const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
 
@@ -502,20 +502,68 @@
     function showPuzzle(p) {
       state_.current_puzzle = p;
       state_.training_game.load(p.fen);
+
+      const solutionMoves = p.solution.split(" ");
+      const correctFirstMove = solutionMoves[0];
+
       state_.board = Chessboard('board', {
-        draggable: true, position: p.fen, orientation: p.side,
+        draggable: true,
+        position: p.fen,
+        orientation: p.side,
         pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
-        onDrop: (s, t) => {
-          const move = state_.training_game.move({ from: s, to: t, promotion: 'q' });
-          if (move) {
-            setTimeout(() => state_.board.position(state_.training_game.fen()), 250);
-            updateEvalFromFen(state_.training_game.fen());
-          } else return 'snapback';
+        onDrop: (source, target) => {
+          // 1. Check where we are in the solution
+          const solutionMoves = p.solution.split(" ");
+          const currentIdx = state_.training_game.history().length;
+
+          // 2. Create a temporary move to see what the SAN would be
+          const tempGame = new Chess(state_.training_game.fen());
+          const move = tempGame.move({
+            from: source,
+            to: target,
+            promotion: 'q'
+          });
+
+          // 3. Basic chess validation
+          if (move === null) return 'snapback';
+
+          // 4. Compare against the specific move in the solution sequence
+          if (move.san !== solutionMoves[currentIdx]) {
+            document.getElementById('hint').innerHTML =
+              `<span style="color: #d32f2f;"><strong>Not according to the engine.</strong> Try again!</span>`;
+            return 'snapback';
+          }
+
+          // 5. If correct, execute the move
+          state_.training_game.move(move.san);
+          document.getElementById('hint').innerHTML =
+            `<span style="color: #2e7d32;"><strong>Correct!</strong></span>`;
+
+          // 6. Sync board and trigger engine's auto-response (the next move in the array)
+          setTimeout(() => {
+            state_.board.position(state_.training_game.fen());
+
+            const nextIdx = state_.training_game.history().length;
+            if (nextIdx < solutionMoves.length) {
+              setTimeout(() => {
+                state_.training_game.move(solutionMoves[nextIdx]);
+                state_.board.position(state_.training_game.fen());
+                updateEvalFromFen(state_.training_game.fen());
+
+                // If there are more moves to find, update hint
+                if (nextIdx + 1 < solutionMoves.length) {
+                  document.getElementById('hint').innerHTML = `<strong>Your Turn:</strong> Continue the sequence...`;
+                } else {
+                  document.getElementById('hint').innerHTML = `<span style="color: #2e7d32;"><strong>Puzzle Complete!</strong></span>`;
+                }
+              }, 600);
+            }
+          }, 250);
         }
       });
-      document.getElementById('solutionText').style.display = 'none';
+
       document.getElementById('btnSolution').style.display = 'block';
-      document.getElementById('hint').innerHTML = `<strong>Hint:</strong> Find ${p.side} move for ${p.gain}`;
+      document.getElementById('hint').innerHTML = `<strong>Your Turn:</strong> Find the best ${p.side} move.`;
     }
 
     async function playSolution() {
@@ -541,13 +589,32 @@
       }
     }
 
-    function stepForward() {
+    async function stepForward() {
       if (!state_.current_puzzle) return;
+
       const sol = state_.current_puzzle.solution.split(" ");
-      const idx = state_.training_game.history().length;
-      if (idx < sol.length && state_.training_game.move(sol[idx])) {
-        state_.board.position(state_.training_game.fen());
-        updateEvalFromFen(state_.training_game.fen());
+      const history = state_.training_game.history();
+      const currentIdx = history.length;
+
+      // 1. Play the "Correct" move (the one the player missed)
+      if (currentIdx < sol.length) {
+        const move1 = state_.training_game.move(sol[currentIdx]);
+        if (move1) {
+          state_.board.position(state_.training_game.fen());
+          updateEvalFromFen(state_.training_game.fen());
+
+          // 2. Wait a beat, then play the Engine's best response
+          await new Promise(r => setTimeout(r, 500));
+
+          const nextIdx = currentIdx + 1;
+          if (nextIdx < sol.length) {
+            const move2 = state_.training_game.move(sol[nextIdx]);
+            if (move2) {
+              state_.board.position(state_.training_game.fen());
+              updateEvalFromFen(state_.training_game.fen());
+            }
+          }
+        }
       }
     }
 
