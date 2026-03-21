@@ -438,18 +438,27 @@
       if (!sel) return false;
 
       const gameId = sel.dataset.gameId;
-      const gameDate = sel.dataset.gameDate; // Use the date we stored earlier
+      const gameDate = sel.dataset.gameDate;
+      const currentDepth = parseInt(document.getElementById('lookahead').value);
+      const currentMargin = parseInt(document.getElementById('margin').value);
 
       const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
       const found = existingPuzzles.find(p => p.gameId === gameId);
 
+      // If puzzle exists, check if settings match
       if (found) {
-        log(`Loading existing puzzle for this game...`, true);
-        showPuzzle(found);
-        return true;
+        const isSameSettings = (found.depth === currentDepth && found.margin === currentMargin);
+
+        if (isSameSettings) {
+          log(`Loading existing puzzle (Depth ${found.depth}, Margin ${found.margin})...`, true);
+          showPuzzle(found);
+          return true;
+        } else {
+          log(`Re-analyzing: Settings changed from D${found.depth}/M${found.margin} to D${currentDepth}/M${currentMargin}...`, true);
+          // We don't return true here; we let it fall through to run a new analysis
+        }
       }
 
-      // If no puzzle exists, proceed with analysis...
       if (!isBatch) document.getElementById('log').innerHTML = "";
       const user = document.getElementById('player').value.toLowerCase();
       const margin = parseInt(document.getElementById('margin').value);
@@ -500,7 +509,7 @@
           return h.Date || h.date || h.UTCDate || "Unknown Date";
         };
 
-        if (isUserTurn && gap >= margin && (move.from + move.to) !== analysis.best.substring(0, 4)) {
+        if (isUserTurn && gap >= currentMargin && (move.from + move.to) !== analysis.best.substring(0, 4)) {
           log(`   >> BLINDSPOT FOUND: ${gap} CP Drop`, true);
 
           const p = {
@@ -512,10 +521,13 @@
             solved: false,
             solution: convertPvToAlgebraic(fen, analysis.pv),
             players: `${wP} vs ${bP}`,
-            date: gameDate // No more "Unknown"!
+            date: gameDate,
+            // SAVE PARAMETERS HERE
+            depth: currentDepth,
+            margin: currentMargin
           };
 
-          savePuzzle(p);
+          saveOrReplacePuzzle(p); // New helper function
           if (!isBatch) showPuzzle(p);
           return true;
         }
@@ -525,10 +537,16 @@
       return false;
     }
 
-    function savePuzzle(p) {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      items.push(p);
-      localStorage.setItem('chess_puzzles', JSON.stringify(items));
+    function saveOrReplacePuzzle(newPuzzle) {
+      let items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+
+      // Filter out any existing puzzle for this game
+      const filtered = items.filter(p => p.gameId !== newPuzzle.gameId);
+
+      // Add the new one
+      filtered.push(newPuzzle);
+
+      localStorage.setItem('chess_puzzles', JSON.stringify(filtered));
       renderSavedPuzzles();
     }
 
@@ -544,11 +562,15 @@
         div.style.display = "block";
         div.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div style="flex: 1; padding-right: 10px;">
-              <div><strong>${p.players || 'N/A'}</strong> ${p.solved ? '✅' : ''}</div>
-              <div style="font-size: 0.75rem; color: #777;">${p.date || ''} | ${p.side} move — ${p.gain}</div>
+          <div style="flex: 1; padding-right: 10px;">
+            <div><strong>${p.players || 'N/A'}</strong> ${p.solved ? '✅' : ''}</div>
+            <div style="font-size: 0.75rem; color: #777;">
+              ${p.date} | ${p.side} | Gain: ${p.gain}
+              <br>
+              <span style="color: var(--primary); font-weight: bold;">[D:${p.depth} M:${p.margin}]</span>
             </div>
-            <div style="display:flex; gap:4px;">
+          </div>
+          <div style="display:flex; gap:4px;">
               <button onclick="loadPuzzleById(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px;">Load</button>
               ${!p.solved ? `<button onclick="markSolved(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#28a745">Solved</button>` : ''}
               <button onclick="deletePuzzle(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#dc3545">Delete</button>
