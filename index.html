@@ -355,6 +355,18 @@
       if (!sel) return false;
 
       const { gameId, gameDate, pgn } = sel.dataset;
+      const game = new Chess();
+      game.load_pgn(pgn);
+      const wP = game.header().White || "Unknown";
+      const bP = game.header().Black || "Unknown";
+
+      // --- ADD THIS BLOCK TO UPDATE THE HEADER DURING ANALYSIS ---
+      UI.puzzleHeader.style.display = 'block';
+      UI.phPlayers.textContent = `${wP} vs ${bP}`;
+      UI.phMeta.textContent = `Analyzing: ${gameDate}`;
+      UI.phEval.textContent = "Scanning for blindspots...";
+      // ------------------------------------------------------------
+
       const depth = parseInt(UI.lookahead.value);
       const margin = parseInt(UI.margin.value);
       const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
@@ -367,9 +379,7 @@
 
       if (!isBatch) UI.log.innerHTML = "";
       const user = UI.player.value.toLowerCase();
-      const game = new Chess();
       game.load_pgn(pgn);
-      const wP = game.header().White, bP = game.header().Black;
       const uSide = bP.toLowerCase() === user ? 'black' : 'white';
 
       state_.board.orientation(uSide);
