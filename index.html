@@ -190,6 +190,7 @@
       </div>
       <div style="display: flex; gap: 10px;">
         <button id="btnPrev" style="flex:1">Step Back</button>
+        <button id="btn-hint" class="btn">Get Hint</button>
         <button id="btnNext" style="flex:1">Step Forward</button>
       </div>
       <button id="btnSolution" style="display:none; margin-top: 10px;">Show Solution</button>
@@ -238,6 +239,7 @@
 
     function init() {
       state_.board = Chessboard('board', { position: 'start', pieceTheme: 'img/chesspieces/wikipedia/{piece}.png' });
+      document.getElementById('btn-hint').addEventListener('click', showPieceHint);
       loadArchives();
       renderSavedPuzzles();
       setupEventListeners();
@@ -468,6 +470,38 @@
         localStorage.setItem('chess_puzzles', JSON.stringify(items));
         renderSavedPuzzles();
         log(`Done: ${p.players}`, true);
+      }
+    }
+
+    function showPieceHint() {
+      const p = state_.current_puzzle;
+      if (!p) return;
+
+      const sol = p.solution.split(" ");
+      const currentIdx = state_.training_game.history().length;
+
+      // If the puzzle is already finished, don't show a move hint
+      if (currentIdx >= sol.length) {
+        UI.hint.innerHTML = "<strong>Puzzle Complete!</strong>";
+        return;
+      }
+
+      // Use a temporary game to get the verbose move data for the NEXT move
+      const tempGame = new Chess(state_.training_game.fen());
+      const nextMoveSan = sol[currentIdx];
+      const moveObj = tempGame.move(nextMoveSan);
+
+      if (moveObj) {
+        const pieceNames = {
+          'p': 'Pawn', 'n': 'Knight', 'b': 'Bishop',
+          'r': 'Rook', 'q': 'Queen', 'k': 'King'
+        };
+
+        const name = pieceNames[moveObj.color === 'w' ? moveObj.piece : moveObj.piece.toLowerCase()];
+        const from = moveObj.from;
+
+        UI.hint.style.display = 'block';
+        UI.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${name}</u> on <strong>${from}</strong>.`;
       }
     }
 
