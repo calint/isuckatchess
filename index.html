@@ -61,10 +61,12 @@
       cursor: pointer;
       font-weight: 600;
       border: none;
+      transition: opacity 0.2s;
     }
 
     button:disabled {
       background: #ccc;
+      cursor: not-allowed;
     }
 
     #board {
@@ -73,7 +75,7 @@
     }
 
     #log {
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Courier New', monospace;
       font-size: 0.75rem;
       height: 300px;
       overflow-y: auto;
@@ -87,11 +89,13 @@
     }
 
     .puzzle-item {
-      padding: 0.5rem;
+      padding: 0.8rem;
       border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .puzzle-item:hover {
+      background: #f9f9f9;
     }
 
     .board-container {
@@ -125,6 +129,12 @@
       align-items: flex-end;
       margin-bottom: 10px;
     }
+
+    .badge {
+      font-weight: bold;
+      color: var(--primary);
+      font-size: 0.7rem;
+    }
   </style>
 </head>
 
@@ -136,22 +146,18 @@
     <div style="display: flex; flex-direction: column; gap: 2rem;">
       <section class="panel">
         <div style="display:flex; gap:0.5rem">
-          <input id="player" type="text" value="calint" placeholder="Username" style="flex:2">
-          <button id="btnReload" style="flex:0.5; background: #607d8b; padding: 0;">↻</button>
+          <input id="player" type="text" value="calint" style="flex:2">
+          <button id="btnReload" style="flex:0.5; background: #607d8b;">↻</button>
           <select id="year" style="flex:1"></select>
           <select id="month" style="flex:1"></select>
         </div>
         <button id="btnLoad">Fetch Games</button>
-        <select id="gameList" size="6" style="margin-bottom:1rem"></select>
+        <select id="gameList" size="6"></select>
         <div class="settings-row">
           <div style="flex: 2;"><label style="font-size: 0.8rem; font-weight: 700;">Lookahead:</label>
             <select id="lookahead">
-              <option value="2">2 moves</option>
-              <option value="3">3 moves</option>
-              <option value="4">4 moves</option>
               <option value="5">5 moves</option>
               <option value="8">8 moves</option>
-              <option value="10">10 moves</option>
               <option value="12" selected>12 moves</option>
             </select>
           </div>
@@ -159,36 +165,34 @@
             <input id="margin" type="number" value="250">
           </div>
         </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 1rem;">
-          <button id="btnAnalyze" style="flex: 2; background: #2e7d32; margin: 0;">Analyze Selected</button>
-          <button id="btnBatch" style="flex: 2; background: #1565c0; margin: 0;">Batch All</button>
-          <button id="btnStop" style="flex: 1; background: #c62828; margin: 0; display: none;">Stop</button>
+        <div style="display: flex; gap: 10px;">
+          <button id="btnAnalyze" style="flex: 2; background: #2e7d32;">Analyze Selected</button>
+          <button id="btnBatch" style="flex: 2; background: #1565c0;">Batch All</button>
+          <button id="btnStop" style="flex: 1; background: #c62828; display: none;">Stop</button>
         </div>
-
         <div id="log">Ready.</div>
       </section>
     </div>
 
     <section class="panel">
       <div id="puzzle-header"
-        style="background: #333; color: #fff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; font-size: 0.9rem; border-left: 4px solid #ffca28;">
-        <div id="ph-players" style="font-weight: bold; font-size: 1.1rem; margin-bottom: 4px;"></div>
-        <div id="ph-meta" style="color: #aaa; font-size: 0.8rem; margin-bottom: 8px;"></div>
+        style="background: #333; color: #fff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; border-left: 4px solid #ffca28;">
+        <div id="ph-players" style="font-weight: bold; font-size: 1.1rem;"></div>
+        <div id="ph-meta" style="color: #aaa; font-size: 0.8rem;"></div>
         <div id="ph-eval" style="color: #ffca28; font-weight: bold;"></div>
       </div>
-      <div id="hint" style="background: #fff9c4; padding: 0.5rem; border-radius: 4px;">Select a puzzle to begin...</div>
+      <div id="hint" style="background: #fff9c4; padding: 0.5rem; border-radius: 4px;">Select a puzzle...</div>
       <div class="board-container">
         <div id="eval-bar">
           <div id="eval-fill"></div>
         </div>
         <div id="board"></div>
       </div>
-      <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+      <div style="display: flex; gap: 10px;">
         <button id="btnPrev" style="flex:1">Step Back</button>
         <button id="btnNext" style="flex:1">Step Forward</button>
       </div>
-      <button id="btnSolution" style="display:none; background:#0b4a6f;">Show Solution</button>
+      <button id="btnSolution" style="display:none; margin-top: 10px;">Show Solution</button>
       <div id="solutionText"
         style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 8px; display: none; border: 1px solid #0b4a6f;">
       </div>
@@ -201,6 +205,28 @@
   <script src="lib/chess.min.js"></script>
 
   <script>
+    // UI Cache to avoid repeated DOM lookups
+    const UI = {
+      player: document.getElementById('player'),
+      year: document.getElementById('year'),
+      month: document.getElementById('month'),
+      gameList: document.getElementById('gameList'),
+      log: document.getElementById('log'),
+      hint: document.getElementById('hint'),
+      evalFill: document.getElementById('eval-fill'),
+      puzzleHeader: document.getElementById('puzzle-header'),
+      phPlayers: document.getElementById('ph-players'),
+      phMeta: document.getElementById('ph-meta'),
+      phEval: document.getElementById('ph-eval'),
+      puzzles: document.getElementById('puzzles'),
+      solutionText: document.getElementById('solutionText'),
+      btnStop: document.getElementById('btnStop'),
+      btnBatch: document.getElementById('btnBatch'),
+      btnSolution: document.getElementById('btnSolution'),
+      lookahead: document.getElementById('lookahead'),
+      margin: document.getElementById('margin')
+    };
+
     const state_ = {
       engine: null,
       board: null,
@@ -211,30 +237,21 @@
     };
 
     function init() {
-      state_.board = Chessboard('board', {
-        position: 'start',
-        pieceTheme: 'img/chesspieces/wikipedia/{piece}.png'
-      });
+      state_.board = Chessboard('board', { position: 'start', pieceTheme: 'img/chesspieces/wikipedia/{piece}.png' });
       loadArchives();
       renderSavedPuzzles();
       setupEventListeners();
     }
 
     function setupEventListeners() {
-      document.getElementById('btnReload').onclick = reloadUserArchives;
+      document.getElementById('btnReload').onclick = () => { UI.gameList.innerHTML = ""; state_.analyzedGames.clear(); loadArchives(); };
       document.getElementById('btnLoad').onclick = loadGamesForMonth;
       document.getElementById('btnAnalyze').onclick = () => runAnalysis(false);
       document.getElementById('btnBatch').onclick = runBatchAnalysis;
-      document.getElementById('btnStop').onclick = () => { state_.isBatchRunning = false; };
-      document.getElementById('btnSolution').onclick = playSolution;
+      UI.btnStop.onclick = () => { state_.isBatchRunning = false; };
+      UI.btnSolution.onclick = playSolution;
       document.getElementById('btnPrev').onclick = stepBack;
       document.getElementById('btnNext').onclick = stepForward;
-    }
-
-    function reloadUserArchives() {
-      document.getElementById('gameList').innerHTML = "";
-      state_.analyzedGames.clear();
-      loadArchives();
     }
 
     async function getEngine() {
@@ -246,113 +263,63 @@
     }
 
     function log(msg, isHeader = false) {
-      const el = document.getElementById('log');
       const div = document.createElement('div');
       if (isHeader) div.style.color = '#fff';
       div.textContent = `> ${msg}`;
-      el.appendChild(div);
-      el.scrollTop = el.scrollHeight;
-    }
-
-    function getMaterialScore(c) {
-      const v = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-      return c.board().flat().reduce((acc, p) => p ? acc + (v[p.type] * (p.color === 'w' ? 1 : -1)) : acc, 0);
+      UI.log.appendChild(div);
+      UI.log.scrollTop = UI.log.scrollHeight;
     }
 
     function updateEvalBar(cp) {
       const p = Math.max(0, Math.min(100, 50 + (cp / 20)));
-      document.getElementById('eval-fill').style.height = p + "%";
-    }
-
-    async function updateEvalFromFen(f) {
-      const a = await evaluate(f, 8);
-      updateEvalBar(a.score);
+      UI.evalFill.style.height = p + "%";
     }
 
     async function loadArchives() {
-      const user = document.getElementById('player').value.trim();
+      const user = UI.player.value.trim();
       if (!user) return;
-      log(`Loading archives for ${user}...`);
       try {
         const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
-        if (!res.ok) throw new Error("User not found");
         const data = await res.json();
         const archives = data.archives.map(url => {
           const p = url.split('/');
           return { year: p[p.length - 2], month: p[p.length - 1] };
         }).sort((a, b) => b.year - a.year || b.month - a.month);
 
-        const years = [...new Set(archives.map(a => a.year))];
-        const ySel = document.getElementById('year');
-        ySel.innerHTML = "";
-        years.forEach(y => ySel.add(new Option(y, y)));
-
-        ySel.onchange = () => {
-          const mSel = document.getElementById('month');
-          mSel.innerHTML = "";
-          archives.filter(a => a.year === ySel.value).forEach(a => mSel.add(new Option(a.month, a.month)));
+        UI.year.innerHTML = "";
+        [...new Set(archives.map(a => a.year))].forEach(y => UI.year.add(new Option(y, y)));
+        UI.year.onchange = () => {
+          UI.month.innerHTML = "";
+          archives.filter(a => a.year === UI.year.value).forEach(a => UI.month.add(new Option(a.month, a.month)));
         };
-        if (years.length > 0) ySel.onchange();
-      } catch (e) { log(`Error: Could not find archives for "${user}".`); }
+        UI.year.onchange();
+      } catch (e) { log("Error: User not found."); }
     }
 
     async function loadGamesForMonth() {
-      const u = document.getElementById('player').value;
-      const y = document.getElementById('year').value;
-      const m = document.getElementById('month').value;
-      log(`Fetching ${y}/${m}...`);
-
-      const res = await fetch(`https://api.chess.com/pub/player/${u}/games/${y}/${m}`);
+      const res = await fetch(`https://api.chess.com/pub/player/${UI.player.value}/games/${UI.year.value}/${UI.month.value}`);
       const data = await res.json();
-      const list = document.getElementById('gameList');
-      list.innerHTML = "";
-
-      const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      UI.gameList.innerHTML = "";
+      const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
 
       data.games.reverse().forEach((g, i) => {
-        // 1. Get the date from the Unix timestamp (end_time)
-        const dateObj = new Date(g.end_time * 1000);
-        const dateStr = dateObj.toLocaleDateString(); // e.g. "3/21/2026"
-
-        const wR = g.white.rating || "?";
-        const bR = g.black.rating || "?";
-
-        // 2. Create a stable ID using players and the timestamp
         const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
-        const hasPuzzle = existingPuzzles.some(p => p.gameId === gameId);
-
-        const opt = new Option(`${hasPuzzle ? '⭐ ' : ''}${dateStr}: ${g.white.username} vs ${g.black.username}`, i);
-        opt.dataset.pgn = g.pgn;
-        opt.dataset.gameId = gameId;
-        opt.dataset.gameDate = dateStr; // Store the date here!
-        list.add(opt);
+        const record = puzzles.find(p => p.gameId === gameId);
+        let prefix = record ? (record.isClean ? "✔ " : "⭐ ") : "";
+        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} vs ${g.black.username}`, i);
+        Object.assign(opt.dataset, { pgn: g.pgn, gameId: gameId, gameDate: new Date(g.end_time * 1000).toLocaleDateString() });
+        UI.gameList.add(opt);
       });
-    }
-
-    function calculateMaterialGap(side, fen, pv, plies) {
-      const currentBoardMat = getMaterialScore(new Chess(fen));
-      const sim = new Chess(fen);
-      const moves = pv.split(" ");
-      for (let j = 0; j < Math.min(plies, moves.length); ++j) {
-        if (moves[j].length >= 4) sim.move({ from: moves[j].substring(0, 2), to: moves[j].substring(2, 4), promotion: moves[j][4] || 'q' });
-      }
-      return (side === 'w' ? 1 : -1) * (getMaterialScore(sim) - currentBoardMat);
     }
 
     async function evaluate(fen, depth) {
       const engine = await getEngine();
       const side = fen.split(" ")[1];
-
-      // IMMEDIATE CHECK: If the game is already over, Stockfish won't reply with a 'bestmove'
       const check = new Chess(fen);
-      if (check.game_over()) {
-        const score = check.in_checkmate() ? (side === 'w' ? -9999 : 9999) : 0;
-        return { score, best: "", san: "NONE", pv: "" };
-      }
+      if (check.game_over()) return { score: check.in_checkmate() ? (side === 'w' ? -9999 : 9999) : 0, best: "" };
 
-      return new Promise((resolve) => {
-        let score = 0, pv = "", best = "";
-
+      return new Promise(resolve => {
+        let score = 0, best = "", pv = "";
         const onMsg = (e) => {
           if (e.data.startsWith("info depth") && e.data.includes("score cp")) {
             const cp = e.data.match(/score cp (-?\d+)/);
@@ -360,18 +327,12 @@
             const p = e.data.match(/ pv (.+)/);
             if (p) pv = p[1];
           }
-          // If the score is a mate score
-          if (e.data.startsWith("info depth") && e.data.includes("score mate")) {
-            const m = e.data.match(/score mate (-?\d+)/);
-            if (m) score = (parseInt(m[1]) > 0 ? 9999 : -9999);
-          }
           if (e.data.startsWith("bestmove")) {
             best = e.data.split(" ")[1];
             engine.removeEventListener("message", onMsg);
-            resolve({ score, best, san: convertPvToAlgebraic(fen, best).split(" ")[0] || "??", pv });
+            resolve({ score, best, pv });
           }
         };
-
         engine.addEventListener("message", onMsg);
         engine.postMessage(`position fen ${fen}`);
         engine.postMessage(`go depth ${depth}`);
@@ -389,326 +350,185 @@
       return san.join(" ");
     }
 
-    async function runBatchAnalysis() {
-      const list = document.getElementById('gameList');
-      if (list.options.length === 0) return alert("Fetch games first!");
-
-      state_.isBatchRunning = true;
-      document.getElementById('btnStop').style.display = 'block';
-      document.getElementById('btnBatch').disabled = true;
-
-      const startPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').length;
-
-      for (let i = 0; i < list.options.length; i++) {
-        // Essential check: did the user click Stop?
-        if (!state_.isBatchRunning) {
-          log("Batch analysis stopped by user.");
-          break;
-        }
-
-        const option = list.options[i];
-
-        // Skip games we've already looked at in THIS session
-        if (state_.analyzedGames.has(option.dataset.pgn)) continue;
-
-        // Auto-scroll the list to the current game
-        list.selectedIndex = i;
-        option.scrollIntoView({ block: 'nearest' });
-
-        log(`Analyzing Game ${i + 1}/${list.options.length}...`, true);
-
-        await runAnalysis(true);
-
-        // Mark as processed so we don't hit it again if the user restarts the batch
-        state_.analyzedGames.add(option.dataset.pgn);
-
-        // Short breathing room for the browser
-        await new Promise(r => setTimeout(r, 150));
-      }
-
-      const endPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').length;
-      state_.isBatchRunning = false;
-      document.getElementById('btnStop').style.display = 'none';
-      document.getElementById('btnBatch').disabled = false;
-      log(`Batch complete. Created ${endPuzzles - startPuzzles} new puzzles.`, true);
-    }
-
     async function runAnalysis(isBatch = false) {
-      const sel = document.getElementById('gameList').selectedOptions[0];
+      const sel = UI.gameList.selectedOptions[0];
       if (!sel) return false;
 
-      const gameId = sel.dataset.gameId;
-      const gameDate = sel.dataset.gameDate;
-      const currentDepth = parseInt(document.getElementById('lookahead').value);
-      const currentMargin = parseInt(document.getElementById('margin').value);
+      const { gameId, gameDate, pgn } = sel.dataset;
+      const depth = parseInt(UI.lookahead.value);
+      const margin = parseInt(UI.margin.value);
+      const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      const found = puzzles.find(p => p.gameId === gameId);
 
-      const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      const found = existingPuzzles.find(p => p.gameId === gameId);
-
-      // If puzzle exists, check if settings match
-      if (found) {
-        const isSameSettings = (found.depth === currentDepth && found.margin === currentMargin);
-
-        if (isSameSettings) {
-          log(`Loading existing puzzle (Depth ${found.depth}, Margin ${found.margin})...`, true);
-          showPuzzle(found);
-          return true;
-        } else {
-          log(`Re-analyzing: Settings changed from D${found.depth}/M${found.margin} to D${currentDepth}/M${currentMargin}...`, true);
-          // We don't return true here; we let it fall through to run a new analysis
-        }
+      if (found && found.depth === depth && found.margin === margin) {
+        if (found.isClean) { log("Skipping: Already verified clean."); return true; }
+        showPuzzle(found); return true;
       }
 
-      if (!isBatch) document.getElementById('log').innerHTML = "";
-      const user = document.getElementById('player').value.toLowerCase();
-      const margin = parseInt(document.getElementById('margin').value);
-
+      if (!isBatch) UI.log.innerHTML = "";
+      const user = UI.player.value.toLowerCase();
       const game = new Chess();
-      game.load_pgn(sel.dataset.pgn);
-      const wP = game.header().White || "Unknown";
-      const bP = game.header().Black || "Unknown";
-      const uSide = (bP.toLowerCase() === user) ? 'black' : 'white';
+      game.load_pgn(pgn);
+      const wP = game.header().White, bP = game.header().Black;
+      const uSide = bP.toLowerCase() === user ? 'black' : 'white';
 
       state_.board.orientation(uSide);
-
       const history = game.history({ verbose: true });
       game.reset();
 
-      for (let i = 0; i < history.length; ++i) {
-        await new Promise(r => setTimeout(r, 10));
+      for (let i = 0; i < history.length; i++) {
         if (isBatch && !state_.isBatchRunning) return false;
-
         const move = history[i], fen = game.fen(), side = game.turn();
-
-        // Safety: Check for game over before engine call
-        if (new Chess(fen).game_over()) break;
-
-        const analysis = await evaluate(fen, 10);
-        const bestMoveSan = convertPvToAlgebraic(fen, analysis.best).split(" ")[0];
+        const analysis = await evaluate(fen, depth);
 
         game.move(move);
         state_.board.position(game.fen());
-
-        if (game.game_over()) {
-          log(`${(side === 'w' ? Math.floor(i / 2) + 1 + '.' : '...')} Played: ${move.san} (Game Over)`);
-          break;
-        }
-
-        const post = await evaluate(game.fen(), 10);
+        const post = await evaluate(game.fen(), depth);
         updateEvalBar(post.score);
 
-        const moveNum = Math.floor(i / 2) + 1;
-        const prefix = (side === 'w') ? `${moveNum}.` : `${moveNum}...`;
-        log(`${prefix} Played: ${move.san} (${post.score}) | Engine: ${bestMoveSan} (${analysis.score})`);
-
         const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
-        const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
-
-        const getGameDate = (game) => {
-          const h = game.header();
-          return h.Date || h.date || h.UTCDate || "Unknown Date";
-        };
-
-        if (isUserTurn && gap >= currentMargin && (move.from + move.to) !== analysis.best.substring(0, 4)) {
-          log(`   >> BLINDSPOT FOUND: ${gap} CP Drop`, true);
-
-          const p = {
-            gameId: gameId,
-            fen,
-            side: side === 'w' ? 'white' : 'black',
-            gain: `evaluation change: ${gap} CP`,
-            id: Date.now() + i,
-            solved: false,
-            solution: convertPvToAlgebraic(fen, analysis.pv),
-            players: `${wP} vs ${bP}`,
-            date: gameDate,
-            // SAVE PARAMETERS HERE
-            depth: currentDepth,
-            margin: currentMargin
-          };
-
-          saveOrReplacePuzzle(p); // New helper function
+        if (uSide.startsWith(side) && gap >= margin && (move.from + move.to) !== analysis.best.substring(0, 4)) {
+          log(`>> BLINDSPOT: ${gap} CP Drop`, true);
+          const p = { gameId, fen, side: side === 'w' ? 'white' : 'black', gain: `${gap} CP`, id: Date.now() + i, solution: convertPvToAlgebraic(fen, analysis.pv), players: `${wP} vs ${bP}`, date: gameDate, depth, margin, isClean: false };
+          savePuzzle(p);
           if (!isBatch) showPuzzle(p);
           return true;
         }
       }
-
-      if (!isBatch) log("No blind spot found in this game.", true);
+      savePuzzle({ gameId, isClean: true, depth, margin, players: `${wP} vs ${bP}`, date: gameDate, id: Date.now() });
+      if (!isBatch) log("No blind spot found.");
       return false;
     }
 
-    function saveOrReplacePuzzle(newPuzzle) {
-      let items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+    async function runBatchAnalysis() {
+      state_.isBatchRunning = true;
+      UI.btnStop.style.display = 'block';
+      UI.btnBatch.disabled = true;
+      for (let i = 0; i < UI.gameList.options.length; i++) {
+        if (!state_.isBatchRunning) break;
+        UI.gameList.selectedIndex = i;
+        await runAnalysis(true);
+      }
+      state_.isBatchRunning = false;
+      UI.btnStop.style.display = 'none';
+      UI.btnBatch.disabled = false;
+      renderSavedPuzzles();
+    }
 
-      // Filter out any existing puzzle for this game
-      const filtered = items.filter(p => p.gameId !== newPuzzle.gameId);
-
-      // Add the new one
-      filtered.push(newPuzzle);
-
-      localStorage.setItem('chess_puzzles', JSON.stringify(filtered));
+    function savePuzzle(p) {
+      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').filter(x => x.gameId !== p.gameId);
+      items.push(p);
+      localStorage.setItem('chess_puzzles', JSON.stringify(items));
       renderSavedPuzzles();
     }
 
     function renderSavedPuzzles() {
-      const container = document.getElementById('puzzles');
-      let items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      items.sort((a, b) => a.solved - b.solved);
-      container.innerHTML = "<h3>Saved Puzzles</h3>";
-      items.forEach(p => {
+      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').filter(p => !p.isClean);
+      UI.puzzles.innerHTML = "<h3>Saved Puzzles</h3>";
+      items.sort((a, b) => a.solved - b.solved).forEach(p => {
         const div = document.createElement('div');
         div.className = 'puzzle-item';
         div.style.opacity = p.solved ? "0.6" : "1";
-        div.style.display = "block";
         div.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div style="flex: 1; padding-right: 10px;">
-            <div><strong>${p.players || 'N/A'}</strong> ${p.solved ? '✅' : ''}</div>
-            <div style="font-size: 0.75rem; color: #777;">
-              ${p.date} | ${p.side} | Gain: ${p.gain}
-              <br>
-              <span style="color: var(--primary); font-weight: bold;">[D:${p.depth} M:${p.margin}]</span>
-            </div>
-          </div>
-          <div style="display:flex; gap:4px;">
-              <button onclick="loadPuzzleById(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px;">Load</button>
-              ${!p.solved ? `<button onclick="markSolved(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#28a745">Solved</button>` : ''}
-              <button onclick="deletePuzzle(${p.id})" style="width:auto; padding: 4px 8px; font-size: 11px; background:#dc3545">Delete</button>
+          <div style="display: flex; justify-content: space-between;">
+            <div><strong>${p.players}</strong> ${p.solved ? '✅' : ''}<br><span class="badge">[D:${p.depth} M:${p.margin}]</span> ${p.gain}</div>
+            <div>
+              <button onclick="loadPuzzleById(${p.id})" style="width:auto; padding: 4px 8px;">Load</button>
+              <button onclick="deletePuzzle(${p.id})" style="width:auto; padding: 4px 8px; background:#dc3545">Del</button>
             </div>
           </div>`;
-        container.appendChild(div);
+        UI.puzzles.appendChild(div);
       });
     }
 
     function loadPuzzleById(id) {
       const p = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').find(x => x.id === id);
       if (p) showPuzzle(p);
-    };
+    }
+
+    function deletePuzzle(id) {
+      localStorage.setItem('chess_puzzles', JSON.stringify(JSON.parse(localStorage.getItem('chess_puzzles') || '[]').filter(p => p.id !== id)));
+      renderSavedPuzzles();
+    }
 
     function markSolved(id) {
       const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
       const p = items.find(x => x.id === id);
-      if (p) { p.solved = true; localStorage.setItem('chess_puzzles', JSON.stringify(items)); renderSavedPuzzles(); }
-    };
-
-    function deletePuzzle(id) {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').filter(p => p.id !== id);
-      localStorage.setItem('chess_puzzles', JSON.stringify(items));
-      renderSavedPuzzles();
-    };
+      if (p && !p.solved) {
+        p.solved = true;
+        localStorage.setItem('chess_puzzles', JSON.stringify(items));
+        renderSavedPuzzles();
+        log(`Done: ${p.players}`, true);
+      }
+    }
 
     async function showPuzzle(p) {
       state_.current_puzzle = p;
       state_.training_game.load(p.fen);
+      UI.puzzleHeader.style.display = 'block';
+      UI.phPlayers.textContent = p.players;
+      UI.phMeta.textContent = `${p.date} | Side: ${p.side.toUpperCase()}`;
+      UI.phEval.textContent = `Improve position by ${p.gain}`;
+      UI.solutionText.style.display = 'none';
+      UI.btnSolution.style.display = 'block';
+      UI.hint.innerHTML = `<strong>Your Turn:</strong> Find the best ${p.side} move.`;
 
-      // Extract the CP value (e.g., from "Eval Drop: 250CP")
-      const cpMatch = p.gain.match(/\d+/);
-      const cpValue = cpMatch ? cpMatch[0] : "???";
-
-      const header = document.getElementById('puzzle-header');
-      header.style.display = 'block';
-
-      // Displaying the fixed metadata
-      document.getElementById('ph-players').textContent = p.players;
-      document.getElementById('ph-meta').textContent = `${p.date} | Side: ${p.side.toUpperCase()}`;
-      document.getElementById('ph-eval').textContent = `Find moves to improve position by ${cpValue} CP`;
-
-      document.getElementById('solutionText').style.display = 'none';
-      const solutionMoves = p.solution.split(" ");
-
+      const sol = p.solution.split(" ");
       state_.board = Chessboard('board', {
-        draggable: true,
-        position: p.fen,
-        orientation: p.side,
-        pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
-        onDrop: (source, target) => {
-          const currentIdx = state_.training_game.history().length;
-          const tempGame = new Chess(state_.training_game.fen());
+        draggable: true, position: p.fen, orientation: p.side, pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
+        onDrop: (s, t) => {
+          const move = new Chess(state_.training_game.fen()).move({ from: s, to: t, promotion: 'q' });
+          if (!move || move.san !== sol[state_.training_game.history().length]) return 'snapback';
 
-          // 1. Synchronous Check: Is the move legal and correct?
-          const move = tempGame.move({ from: source, to: target, promotion: 'q' });
-          if (move === null || move.san !== solutionMoves[currentIdx]) {
-            document.getElementById('hint').innerHTML =
-              `<span style="color: #d32f2f;"><strong>Not according to the engine.</strong> Try again!</span>`;
-            return 'snapback';
-          }
+          state_.training_game.move(move.san);
+          state_.board.position(state_.training_game.fen());
 
-          // 2. Async logic: Handle the engine response separately
-          (async () => {
-            state_.training_game.move(move.san);
-            document.getElementById('hint').innerHTML = `<span style="color: #2e7d32;"><strong>Correct!</strong></span>`;
-
-            state_.board.position(state_.training_game.fen());
-            const userEval = await evaluate(state_.training_game.fen(), 10);
-            updateEvalBar(userEval.score);
-
-            const nextIdx = state_.training_game.history().length;
-            if (nextIdx < solutionMoves.length) {
-              await new Promise(r => setTimeout(r, 600));
-              state_.training_game.move(solutionMoves[nextIdx]);
+          if (state_.training_game.history().length < sol.length) {
+            setTimeout(() => {
+              state_.training_game.move(sol[state_.training_game.history().length]);
               state_.board.position(state_.training_game.fen());
-
-              const postReplyEval = await evaluate(state_.training_game.fen(), 10);
-              updateEvalBar(postReplyEval.score);
-
-              const hintEl = document.getElementById('hint');
-              if (nextIdx + 1 < solutionMoves.length) {
-                hintEl.innerHTML = `<strong>Your Turn:</strong> Keep going...`;
-              } else {
-                hintEl.innerHTML = `<span style="color: #2e7d32;"><strong>Puzzle Complete!</strong></span>`;
-                markSolved(p.id);
-              }
-            }
-          })();
+              UI.hint.innerHTML = "<strong>Your Turn:</strong> Keep going...";
+            }, 600);
+          } else {
+            UI.hint.innerHTML = "<span style='color:green'>Correct!</span>";
+            markSolved(p.id);
+          }
         }
       });
-
-      document.getElementById('btnSolution').style.display = 'block';
-      document.getElementById('hint').innerHTML = `<strong>Your Turn:</strong> Find the best ${p.side} move.`;
     }
 
     async function playSolution() {
       if (!state_.current_puzzle) return;
-      document.getElementById('solutionText').innerHTML = `<strong>Solution:</strong> ${state_.current_puzzle.solution}`;
-      document.getElementById('solutionText').style.display = 'block';
+      UI.solutionText.innerHTML = `<strong>Solution:</strong> ${state_.current_puzzle.solution}`;
+      UI.solutionText.style.display = 'block';
       state_.training_game.load(state_.current_puzzle.fen);
-      state_.board.position(state_.current_puzzle.fen);
       for (const m of state_.current_puzzle.solution.split(" ")) {
-        if (!m) continue;
         await new Promise(r => setTimeout(r, 600));
-        if (state_.training_game.move(m)) {
-          state_.board.position(state_.training_game.fen());
-          updateEvalFromFen(state_.training_game.fen());
-        }
+        state_.training_game.move(m);
+        state_.board.position(state_.training_game.fen());
       }
     }
 
-    function stepBack() {
-      if (state_.training_game.undo()) {
-        state_.board.position(state_.training_game.fen());
-        updateEvalFromFen(state_.training_game.fen());
-      }
-    }
+    function stepBack() { if (state_.training_game.undo()) state_.board.position(state_.training_game.fen()); }
 
     async function stepForward() {
-      if (!state_.current_puzzle) return;
+      const p = state_.current_puzzle;
+      if (!p) return;
 
-      const sol = state_.current_puzzle.solution.split(" ");
-      const history = state_.training_game.history();
-      const currentIdx = history.length;
+      const sol = p.solution.split(" ");
+      const currentIdx = state_.training_game.history().length;
 
-      // 1. Play the "Correct" move (the one the player missed)
+      // 1. Play the "Correct" move (the one the player missed or the next in sequence)
       if (currentIdx < sol.length) {
         const move1 = state_.training_game.move(sol[currentIdx]);
         if (move1) {
           state_.board.position(state_.training_game.fen());
           updateEvalFromFen(state_.training_game.fen());
 
-          // 2. Wait a beat, then play the Engine's best response
-          await new Promise(r => setTimeout(r, 500));
-
+          // 2. Wait a beat, then play the Engine's response automatically
           const nextIdx = currentIdx + 1;
           if (nextIdx < sol.length) {
+            await new Promise(r => setTimeout(r, 400));
             const move2 = state_.training_game.move(sol[nextIdx]);
             if (move2) {
               state_.board.position(state_.training_game.fen());
@@ -716,6 +536,12 @@
             }
           }
         }
+      }
+
+      // Check if that completed the puzzle
+      if (state_.training_game.history().length >= sol.length) {
+        UI.hint.innerHTML = "<span style='color:green'>Puzzle Complete!</span>";
+        markSolved(p.id);
       }
     }
 
