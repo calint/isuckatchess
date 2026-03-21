@@ -301,16 +301,30 @@
       const y = document.getElementById('year').value;
       const m = document.getElementById('month').value;
       log(`Fetching ${y}/${m}...`);
+
       const res = await fetch(`https://api.chess.com/pub/player/${u}/games/${y}/${m}`);
       const data = await res.json();
       const list = document.getElementById('gameList');
       list.innerHTML = "";
+
+      const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+
       data.games.reverse().forEach((g, i) => {
-        const dateStr = new Date(g.end_time * 1000).toLocaleDateString();
+        // 1. Get the date from the Unix timestamp (end_time)
+        const dateObj = new Date(g.end_time * 1000);
+        const dateStr = dateObj.toLocaleDateString(); // e.g. "3/21/2026"
+
         const wR = g.white.rating || "?";
         const bR = g.black.rating || "?";
-        const opt = new Option(`${dateStr}: ${g.white.username} (${wR}) vs ${g.black.username} (${bR})`, i);
+
+        // 2. Create a stable ID using players and the timestamp
+        const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
+        const hasPuzzle = existingPuzzles.some(p => p.gameId === gameId);
+
+        const opt = new Option(`${hasPuzzle ? '⭐ ' : ''}${dateStr}: ${g.white.username} vs ${g.black.username}`, i);
         opt.dataset.pgn = g.pgn;
+        opt.dataset.gameId = gameId;
+        opt.dataset.gameDate = dateStr; // Store the date here!
         list.add(opt);
       });
     }
@@ -423,11 +437,9 @@
       const sel = document.getElementById('gameList').selectedOptions[0];
       if (!sel) return false;
 
-      // 1. Create a unique ID for this game to check for existing puzzles
-      const gameHeader = sel.textContent.split(':')[1] || sel.textContent;
-      const gameId = btoa(gameHeader).substring(0, 16);
+      const gameId = sel.dataset.gameId;
+      const gameDate = sel.dataset.gameDate; // Use the date we stored earlier
 
-      // 2. CHECK: If puzzle exists, load it and exit
       const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
       const found = existingPuzzles.find(p => p.gameId === gameId);
 
@@ -483,11 +495,16 @@
         const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
         const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
 
+        const getGameDate = (game) => {
+          const h = game.header();
+          return h.Date || h.date || h.UTCDate || "Unknown Date";
+        };
+
         if (isUserTurn && gap >= margin && (move.from + move.to) !== analysis.best.substring(0, 4)) {
           log(`   >> BLINDSPOT FOUND: ${gap} CP Drop`, true);
 
           const p = {
-            gameId: gameId, // Crucial for the "already analyzed" check
+            gameId: gameId,
             fen,
             side: side === 'w' ? 'white' : 'black',
             gain: `evaluation change: ${gap} CP`,
@@ -495,7 +512,7 @@
             solved: false,
             solution: convertPvToAlgebraic(fen, analysis.pv),
             players: `${wP} vs ${bP}`,
-            date: game.header().Date || "Unknown Date"
+            date: gameDate // No more "Unknown"!
           };
 
           savePuzzle(p);
