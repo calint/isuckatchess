@@ -326,10 +326,19 @@
     }
 
     async function evaluate(fen, depth) {
-      return new Promise(async (resolve) => {
-        const engine = await getEngine();
-        const side = fen.split(" ")[1];
+      const engine = await getEngine();
+      const side = fen.split(" ")[1];
+
+      // IMMEDIATE CHECK: If the game is already over, Stockfish won't reply with a 'bestmove'
+      const check = new Chess(fen);
+      if (check.game_over()) {
+        const score = check.in_checkmate() ? (side === 'w' ? -9999 : 9999) : 0;
+        return { score, best: "", san: "NONE", pv: "" };
+      }
+
+      return new Promise((resolve) => {
         let score = 0, pv = "", best = "";
+
         const onMsg = (e) => {
           if (e.data.startsWith("info depth") && e.data.includes("score cp")) {
             const cp = e.data.match(/score cp (-?\d+)/);
@@ -337,12 +346,18 @@
             const p = e.data.match(/ pv (.+)/);
             if (p) pv = p[1];
           }
+          // If the score is a mate score
+          if (e.data.startsWith("info depth") && e.data.includes("score mate")) {
+            const m = e.data.match(/score mate (-?\d+)/);
+            if (m) score = (parseInt(m[1]) > 0 ? 9999 : -9999);
+          }
           if (e.data.startsWith("bestmove")) {
             best = e.data.split(" ")[1];
             engine.removeEventListener("message", onMsg);
             resolve({ score, best, san: convertPvToAlgebraic(fen, best).split(" ")[0] || "??", pv });
           }
         };
+
         engine.addEventListener("message", onMsg);
         engine.postMessage(`position fen ${fen}`);
         engine.postMessage(`go depth ${depth}`);
@@ -368,33 +383,41 @@
       document.getElementById('btnStop').style.display = 'block';
       document.getElementById('btnBatch').disabled = true;
 
+      const startPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').length;
+
       for (let i = 0; i < list.options.length; i++) {
         if (!state_.isBatchRunning) break;
 
         const option = list.options[i];
-        const pgn = option.dataset.pgn;
+        if (state_.analyzedGames.has(option.dataset.pgn)) continue;
 
-        if (state_.analyzedGames.has(pgn)) continue;
-
+        // Explicitly select the game in the UI
         list.selectedIndex = i;
-        log(`Batch analyzing game ${i + 1}/${list.options.length}...`, true);
+        for (let opt of list.options) opt.selected = false;
+        option.selected = true;
 
-        const found = await runAnalysis(true);
-        state_.analyzedGames.add(pgn);
+        log(`Analyzing Game ${i + 1}/${list.options.length}...`, true);
+
+        // We wait for the game to fully finish or find a blindspot
+        await runAnalysis(true);
+
+        // Mark as done regardless of result
+        state_.analyzedGames.add(option.dataset.pgn);
+
+        // Give the browser a moment to breathe and update the scroll/UI
+        await new Promise(r => setTimeout(r, 200));
       }
 
+      const endPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').length;
       state_.isBatchRunning = false;
       document.getElementById('btnStop').style.display = 'none';
       document.getElementById('btnBatch').disabled = false;
-      log("Batch analysis finished.");
+      log(`Batch complete. Created ${endPuzzles - startPuzzles} puzzles.`, true);
     }
 
     async function runAnalysis(isBatch = false) {
       const sel = document.getElementById('gameList').selectedOptions[0];
-      if (!sel) {
-        if (!isBatch) alert("Select a game!");
-        return false;
-      }
+      if (!sel) return false;
 
       if (!isBatch) document.getElementById('log').innerHTML = "";
       const user = document.getElementById('player').value.toLowerCase();
@@ -402,67 +425,66 @@
 
       const game = new Chess();
       game.load_pgn(sel.dataset.pgn);
-      const wP = game.header().White || "Unknown", wR = game.header().WhiteElo || "?";
-      const bP = game.header().Black || "Unknown", bR = game.header().BlackElo || "?";
+      const wP = game.header().White || "Unknown";
+      const bP = game.header().Black || "Unknown";
       const uSide = (bP.toLowerCase() === user) ? 'black' : 'white';
 
       state_.board.orientation(uSide);
-      if (!isBatch) log(`RUNNING ANALYSIS (${uSide})...`, true);
 
       const history = game.history({ verbose: true });
       game.reset();
 
       for (let i = 0; i < history.length; ++i) {
-        if (isBatch && state_.isBatchRunning === false) return false;
+        // Yield control to UI thread and check stop flag
+        await new Promise(r => setTimeout(r, 10));
+        if (isBatch && !state_.isBatchRunning) return false;
 
         const move = history[i], fen = game.fen(), side = game.turn();
-        const analysis = await evaluate(fen, 10);
 
-        // Convert the engine's best UCI move to SAN for readable logging
+        // 2. SAFETY CHECK: If the game is already over, don't evaluate
+        const checkGame = new Chess(fen);
+        if (checkGame.game_over()) {
+          log(`Move ${Math.floor(i / 2) + 1}: Game ended (Checkmate/Draw). Skipping evaluation.`);
+          break;
+        }
+
+        // 1. Get Engine Best Move
+        const analysis = await evaluate(fen, 10);
         const bestMoveSan = convertPvToAlgebraic(fen, analysis.best).split(" ")[0];
 
+        // 2. Play move and update board
         game.move(move);
         state_.board.position(game.fen());
-        await new Promise(r => setTimeout(r, isBatch ? 10 : 50));
+
+        // 3. Get Played Move Eval
         const post = await evaluate(game.fen(), 10);
         updateEvalBar(post.score);
 
-        // Logging the comparison
-        const moveNumber = Math.floor(i / 2) + 1;
-        const movePrefix = (side === 'w') ? `${moveNumber}.` : `${moveNumber}...`;
-        log(`${movePrefix} Played: ${move.san} (${post.score}) | Engine: ${bestMoveSan} (${analysis.score})`);
+        // 4. Log
+        const moveNum = Math.floor(i / 2) + 1;
+        const prefix = (side === 'w') ? `${moveNum}.` : `${moveNum}...`;
+        log(`${prefix} Played: ${move.san} (${post.score}) | Engine: ${bestMoveSan} (${analysis.score})`);
 
-        // Pure Eval Drop Logic
+        // 5. Check Blindspot
         const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
-        const flag = gap >= margin;
-        const label = `evaluation change: ${gap} CP`;
-
         const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
 
-        // Trigger if it's the user's turn, the gap exceeds margin, and they didn't play the engine's best move
-        if (isUserTurn && flag && (move.from + move.to) !== analysis.best.substring(0, 4)) {
-          log(`   >> BLINDSPOT FOUND: ${label}`, true);
-
-          // Get the date from the game header or the selection list
-          const gameDate = game.header().Date || game.header().date || sel.textContent.split(':')[0] || "Unknown Date";
-
+        if (isUserTurn && gap >= margin && (move.from + move.to) !== analysis.best.substring(0, 4)) {
+          log(`   >> BLINDSPOT FOUND: ${gap} CP Drop`, true);
+          const gameDate = game.header().Date || game.header().date || "Unknown Date";
           const p = {
-            fen,
-            side: side === 'w' ? 'white' : 'black',
-            gain: label,
-            id: Date.now() + i,
-            solved: false,
-            solution: convertPvToAlgebraic(fen, analysis.pv),
-            players: `${wP} vs ${bP}`,
-            date: gameDate // Lowercase 'd' for consistency
+            fen, side: side === 'w' ? 'white' : 'black', gain: `evaluation change: ${gap} CP`,
+            id: Date.now() + i, solved: false, solution: convertPvToAlgebraic(fen, analysis.pv),
+            players: `${wP} vs ${bP}`, date: gameDate
           };
           savePuzzle(p);
-          showPuzzle(p);
-          return true;
+          if (!isBatch) showPuzzle(p);
+          return true; // Found one, exit loop and return to batch
         }
       }
+
       if (!isBatch) log("No blind spot found in this game.", true);
-      return false;
+      return false; // Finished game, no blindspot found
     }
 
     function savePuzzle(p) {
