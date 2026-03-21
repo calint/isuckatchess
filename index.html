@@ -423,17 +423,21 @@
       const sel = document.getElementById('gameList').selectedOptions[0];
       if (!sel) return false;
 
-      // Create a unique hash for this specific game
+      // 1. Create a unique ID for this game to check for existing puzzles
       const gameHeader = sel.textContent.split(':')[1] || sel.textContent;
-      const gameId = btoa(gameHeader).substring(0, 16); // Simple unique string from names/date
+      const gameId = btoa(gameHeader).substring(0, 16);
 
-      // CHECK: Does a puzzle for this game already exist in localStorage?
+      // 2. CHECK: If puzzle exists, load it and exit
       const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      if (existingPuzzles.some(p => p.gameId === gameId)) {
-        if (!isBatch) log("Puzzle for this game already exists.");
-        return true; // Skip analysis but return true to signify 'processed'
+      const found = existingPuzzles.find(p => p.gameId === gameId);
+
+      if (found) {
+        log(`Loading existing puzzle for this game...`, true);
+        showPuzzle(found);
+        return true;
       }
 
+      // If no puzzle exists, proceed with analysis...
       if (!isBatch) document.getElementById('log').innerHTML = "";
       const user = document.getElementById('player').value.toLowerCase();
       const margin = parseInt(document.getElementById('margin').value);
@@ -450,37 +454,32 @@
       game.reset();
 
       for (let i = 0; i < history.length; ++i) {
-        // Yield control to UI thread and check stop flag
         await new Promise(r => setTimeout(r, 10));
         if (isBatch && !state_.isBatchRunning) return false;
 
         const move = history[i], fen = game.fen(), side = game.turn();
 
-        // 2. SAFETY CHECK: If the game is already over, don't evaluate
-        const checkGame = new Chess(fen);
-        if (checkGame.game_over()) {
-          log(`Move ${Math.floor(i / 2) + 1}: Game ended (Checkmate/Draw). Skipping evaluation.`);
-          break;
-        }
+        // Safety: Check for game over before engine call
+        if (new Chess(fen).game_over()) break;
 
-        // 1. Get Engine Best Move
         const analysis = await evaluate(fen, 10);
         const bestMoveSan = convertPvToAlgebraic(fen, analysis.best).split(" ")[0];
 
-        // 2. Play move and update board
         game.move(move);
         state_.board.position(game.fen());
 
-        // 3. Get Played Move Eval
+        if (game.game_over()) {
+          log(`${(side === 'w' ? Math.floor(i / 2) + 1 + '.' : '...')} Played: ${move.san} (Game Over)`);
+          break;
+        }
+
         const post = await evaluate(game.fen(), 10);
         updateEvalBar(post.score);
 
-        // 4. Log
         const moveNum = Math.floor(i / 2) + 1;
         const prefix = (side === 'w') ? `${moveNum}.` : `${moveNum}...`;
         log(`${prefix} Played: ${move.san} (${post.score}) | Engine: ${bestMoveSan} (${analysis.score})`);
 
-        // 5. Check Blindspot
         const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
         const isUserTurn = (side === 'w' && wP.toLowerCase() === user) || (side === 'b' && bP.toLowerCase() === user);
 
@@ -488,7 +487,7 @@
           log(`   >> BLINDSPOT FOUND: ${gap} CP Drop`, true);
 
           const p = {
-            gameId: gameId, // Store the unique ID to prevent duplicates later
+            gameId: gameId, // Crucial for the "already analyzed" check
             fen,
             side: side === 'w' ? 'white' : 'black',
             gain: `evaluation change: ${gap} CP`,
@@ -506,7 +505,7 @@
       }
 
       if (!isBatch) log("No blind spot found in this game.", true);
-      return false; // Finished game, no blindspot found
+      return false;
     }
 
     function savePuzzle(p) {
