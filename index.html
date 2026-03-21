@@ -374,7 +374,7 @@
       const found = puzzles.find(p => p.gameId === gameId);
 
       if (found && found.depth === depth && found.margin === margin) {
-        if (found.isClean) { log("Skipping: Already verified clean."); return true; }
+        if (found.isClean) { log("Skipping: Already verified without finding blind spots."); return true; }
         showPuzzle(found); return true;
       }
 
