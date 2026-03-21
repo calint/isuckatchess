@@ -360,12 +360,10 @@
       const wP = game.header().White || "Unknown";
       const bP = game.header().Black || "Unknown";
 
-      // --- ADD THIS BLOCK TO UPDATE THE HEADER DURING ANALYSIS ---
       UI.puzzleHeader.style.display = 'block';
       UI.phPlayers.textContent = `${wP} vs ${bP}`;
       UI.phMeta.textContent = `Analyzing: ${gameDate}`;
       UI.phEval.textContent = "Scanning for blindspots...";
-      // ------------------------------------------------------------
 
       const depth = parseInt(UI.lookahead.value);
       const margin = parseInt(UI.margin.value);
