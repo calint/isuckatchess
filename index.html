@@ -360,6 +360,7 @@
       const wP = game.header().White || "Unknown";
       const bP = game.header().Black || "Unknown";
 
+      UI.hint.style.display = 'none';
       UI.puzzleHeader.style.display = 'block';
       UI.phPlayers.textContent = `${wP} vs ${bP}`;
       UI.phMeta.textContent = `Analyzing: ${gameDate}`;
@@ -479,6 +480,7 @@
       UI.phEval.textContent = `Improve position by ${p.gain}`;
       UI.solutionText.style.display = 'none';
       UI.btnSolution.style.display = 'block';
+      UI.hint.style.display = 'block';
       UI.hint.innerHTML = `<strong>Your Turn:</strong> Find the best ${p.side} move.`;
 
       const sol = p.solution.split(" ");
