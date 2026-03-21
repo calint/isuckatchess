@@ -472,6 +472,7 @@
     }
 
     async function showPuzzle(p) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       state_.current_puzzle = p;
       state_.training_game.load(p.fen);
       UI.puzzleHeader.style.display = 'block';
