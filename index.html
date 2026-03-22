@@ -308,8 +308,16 @@
         const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
         const record = puzzles.find(p => p.gameId === gameId);
         let prefix = record ? (record.isClean ? "✔ " : "⭐ ") : "";
-        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} vs ${g.black.username}`, i);
-        Object.assign(opt.dataset, { pgn: g.pgn, gameId: gameId, gameDate: new Date(g.end_time * 1000).toLocaleDateString() });
+        const wR = g.white.rating || "?";
+        const bR = g.black.rating || "?";
+        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} (${wR}) vs ${g.black.username} (${bR})`, i);
+        Object.assign(opt.dataset, {
+          pgn: g.pgn,
+          gameId: gameId,
+          gameDate: new Date(g.end_time * 1000).toLocaleDateString(),
+          wR: wR,
+          bR: bR
+        });
         UI.gameList.add(opt);
       });
     }
@@ -356,17 +364,19 @@
       const sel = UI.gameList.selectedOptions[0];
       if (!sel) return false;
 
-      const { gameId, gameDate, pgn } = sel.dataset;
+      const { gameId, gameDate, pgn, wR, bR } = sel.dataset;
       const game = new Chess();
       game.load_pgn(pgn);
       const wP = game.header().White || "Unknown";
       const bP = game.header().Black || "Unknown";
 
       UI.hint.style.display = 'none';
+      UI.hint.textContent = "";
       UI.puzzleHeader.style.display = 'block';
-      UI.phPlayers.textContent = `${wP} vs ${bP}`;
+      UI.phPlayers.textContent = `${wP} (${wR}) vs ${bP} (${bR})`;
       UI.phMeta.textContent = `Analyzing: ${gameDate}`;
       UI.phEval.textContent = "Scanning for blindspots...";
+      UI.phEval.style.color = "#ffca28";
 
       const depth = parseInt(UI.lookahead.value);
       const margin = parseInt(UI.margin.value);
@@ -400,13 +410,13 @@
         const gap = (side === 'w' ? 1 : -1) * (analysis.score - post.score);
         if (uSide.startsWith(side) && gap >= margin && (move.from + move.to) !== analysis.best.substring(0, 4)) {
           log(`>> BLINDSPOT: ${gap} CP Drop`, true);
-          const p = { gameId, fen, side: side === 'w' ? 'white' : 'black', gain: `${gap} CP`, id: Date.now() + i, solution: convertPvToAlgebraic(fen, analysis.pv), players: `${wP} vs ${bP}`, date: gameDate, depth, margin, isClean: false };
+          const p = { gameId, fen, side: side === 'w' ? 'white' : 'black', gain: `${gap} CP`, id: Date.now() + i, solution: convertPvToAlgebraic(fen, analysis.pv), players: `${wP} (${wR}) vs ${bP} (${bR})`, date: gameDate, depth, margin, isClean: false };
           savePuzzle(p);
           if (!isBatch) showPuzzle(p);
           return true;
         }
       }
-      savePuzzle({ gameId, isClean: true, depth, margin, players: `${wP} vs ${bP}`, date: gameDate, id: Date.now() });
+      savePuzzle({ gameId, isClean: true, depth, margin, players: `${wP} (${wR}) vs ${bP} (${bR})`, date: gameDate, id: Date.now() });
       if (!isBatch) log("No blind spot found.");
       return false;
     }
@@ -469,6 +479,9 @@
         p.solved = true;
         localStorage.setItem('chess_puzzles', JSON.stringify(items));
         renderSavedPuzzles();
+        UI.hint.innerHTML = "<span style='color:green; font-weight:bold;'>✔ Puzzle Complete!</span>";
+        UI.phEval.textContent = "Great job! Position improved.";
+        UI.phEval.style.color = "#4caf50";
         log(`Done: ${p.players}`, true);
       }
     }
@@ -476,32 +489,15 @@
     function showPieceHint() {
       const p = state_.current_puzzle;
       if (!p) return;
-
       const sol = p.solution.split(" ");
-      const currentIdx = state_.training_game.history().length;
-
-      // If the puzzle is already finished, don't show a move hint
-      if (currentIdx >= sol.length) {
-        UI.hint.innerHTML = "<strong>Puzzle Complete!</strong>";
-        return;
-      }
-
-      // Use a temporary game to get the verbose move data for the NEXT move
-      const tempGame = new Chess(state_.training_game.fen());
-      const nextMoveSan = sol[currentIdx];
-      const moveObj = tempGame.move(nextMoveSan);
-
+      const cur = state_.training_game.history().length;
+      if (cur >= sol.length) return UI.hint.innerHTML = "<strong>Puzzle Complete!</strong>";
+      const temp = new Chess(state_.training_game.fen());
+      const moveObj = temp.move(sol[cur]);
       if (moveObj) {
-        const pieceNames = {
-          'p': 'Pawn', 'n': 'Knight', 'b': 'Bishop',
-          'r': 'Rook', 'q': 'Queen', 'k': 'King'
-        };
-
-        const name = pieceNames[moveObj.color === 'w' ? moveObj.piece : moveObj.piece.toLowerCase()];
-        const from = moveObj.from;
-
+        const names = { 'p': 'Pawn', 'n': 'Knight', 'b': 'Bishop', 'r': 'Rook', 'q': 'Queen', 'k': 'King' };
         UI.hint.style.display = 'block';
-        UI.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${name}</u> on <strong>${from}</strong>.`;
+        UI.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${names[moveObj.piece]}</u> on <strong>${moveObj.from}</strong>.`;
       }
     }
 
@@ -513,6 +509,7 @@
       UI.phPlayers.textContent = p.players;
       UI.phMeta.textContent = `${p.date} | Side: ${p.side.toUpperCase()}`;
       UI.phEval.textContent = `Improve position by ${p.gain}`;
+      UI.phEval.style.color = "#ffca28";
       UI.solutionText.style.display = 'none';
       UI.btnSolution.style.display = 'block';
       UI.hint.style.display = 'block';
@@ -524,18 +521,17 @@
         onDrop: (s, t) => {
           const move = new Chess(state_.training_game.fen()).move({ from: s, to: t, promotion: 'q' });
           if (!move || move.san !== sol[state_.training_game.history().length]) return 'snapback';
-
           state_.training_game.move(move.san);
           state_.board.position(state_.training_game.fen());
-
-          if (state_.training_game.history().length < sol.length) {
+          const next = state_.training_game.history().length;
+          if (next < sol.length) {
             setTimeout(() => {
-              state_.training_game.move(sol[state_.training_game.history().length]);
+              state_.training_game.move(sol[next]);
               state_.board.position(state_.training_game.fen());
               UI.hint.innerHTML = "<strong>Your Turn:</strong> Keep going...";
+              if (state_.training_game.history().length >= sol.length) markSolved(p.id);
             }, 600);
           } else {
-            UI.hint.innerHTML = "<span style='color:green'>Correct!</span>";
             markSolved(p.id);
           }
         }
@@ -559,35 +555,19 @@
     async function stepForward() {
       const p = state_.current_puzzle;
       if (!p) return;
-
       const sol = p.solution.split(" ");
-      const currentIdx = state_.training_game.history().length;
-
-      // 1. Play the "Correct" move (the one the player missed or the next in sequence)
-      if (currentIdx < sol.length) {
-        const move1 = state_.training_game.move(sol[currentIdx]);
-        if (move1) {
+      const cur = state_.training_game.history().length;
+      if (cur < sol.length) {
+        state_.training_game.move(sol[cur]);
+        state_.board.position(state_.training_game.fen());
+        const next = state_.training_game.history().length;
+        if (next < sol.length) {
+          await new Promise(r => setTimeout(r, 400));
+          state_.training_game.move(sol[next]);
           state_.board.position(state_.training_game.fen());
-          updateEvalFromFen(state_.training_game.fen());
-
-          // 2. Wait a beat, then play the Engine's response automatically
-          const nextIdx = currentIdx + 1;
-          if (nextIdx < sol.length) {
-            await new Promise(r => setTimeout(r, 400));
-            const move2 = state_.training_game.move(sol[nextIdx]);
-            if (move2) {
-              state_.board.position(state_.training_game.fen());
-              updateEvalFromFen(state_.training_game.fen());
-            }
-          }
         }
       }
-
-      // Check if that completed the puzzle
-      if (state_.training_game.history().length >= sol.length) {
-        UI.hint.innerHTML = "<span style='color:green'>Puzzle Complete!</span>";
-        markSolved(p.id);
-      }
+      if (state_.training_game.history().length >= sol.length) markSolved(p.id);
     }
 
     window.onload = init;
