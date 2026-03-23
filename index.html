@@ -368,35 +368,26 @@
 
     async function onBatch() {
       const options = Array.from(UI.gameList.options);
-      if (options.length === 0) {
-        log("No games loaded to batch analyze.");
-        return;
-      }
+      if (options.length === 0) return;
 
       state_.isBatchRunning = true;
-      UI.btnBatch.style.display = 'none';
-      UI.btnStop.style.display = 'block';
+      toggleAnalysisUI(true);
 
       log(`Starting batch analysis of ${options.length} games...`, true);
 
       for (let i = 0; i < options.length; i++) {
-        if (!state_.isBatchRunning) {
-          log("Batch analysis stopped by user.");
-          break;
-        }
+        if (!state_.isBatchRunning) break;
 
-        // Visually select the game in the list
+        // Auto-select the game in the UI list so the user sees progress
         UI.gameList.selectedIndex = i;
-        log(`Processing game ${i + 1}/${options.length}...`);
 
-        // We pass 'true' to runAnalysis to signal it's part of a batch
-        await runAnalysis(true);
+        // CRITICAL FIX: Pass the counters (i + 1) and total length
+        await runAnalysis(true, i + 1, options.length);
       }
 
       state_.isBatchRunning = false;
-      UI.btnBatch.style.display = 'block';
-      UI.btnStop.style.display = 'none';
-      log("Batch analysis complete.", true);
+      toggleAnalysisUI(false);
+      UI.hint.textContent = "Batch complete. Select a puzzle to begin.";
     }
 
     async function updateUI() {
@@ -592,9 +583,13 @@
       UI.log.scrollTop = UI.log.scrollHeight;
     }
 
-    async function runAnalysis(isBatch = false) {
+    async function runAnalysis(isBatch = false, gameIdx = 1, totalGames = 1) {
       const sel = UI.gameList.selectedOptions[0];
       if (!sel) return;
+
+      // Ensure we use the passed counters for display
+      const displayIdx = isBatch ? gameIdx : 1;
+      const displayTotal = isBatch ? totalGames : 1;
 
       // 1. UI Lockdown & State Setup
       if (!isBatch) toggleAnalysisUI(true);
@@ -606,12 +601,9 @@
         const currentMargin = parseInt(document.getElementById('margin').value);
         const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
 
-        // Initial Hint Display
-        UI.hint.innerHTML = `<strong>Analyzing:</strong> ${playerDisplay}<br>
-                         <small id="analysis-progress">Initializing engine...</small>`;
-
+        // Header Log
         log("------------------------------------------", true);
-        log(`ANALYZING: ${playerDisplay}`, true);
+        log(`ANALYZING [${displayIdx}/${displayTotal}]: ${playerDisplay}`, true);
 
         // 2. Skip Logic (If settings match saved record)
         const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
@@ -646,12 +638,15 @@
           if (isBatch && !state_.isBatchRunning) return;
           moveCount++;
 
-          // Update Live Progress
+          // Update Live Progress in Hint Box
           const prog = Math.round((moveCount / history.length) * 100);
-          const progressEl = document.getElementById('analysis-progress');
-          if (progressEl) progressEl.innerText = `Move ${moveCount}/${history.length} (${prog}%)`;
+          UI.hint.innerHTML = `
+        <div style="font-weight:bold;">Game ${displayIdx} of ${displayTotal}</div>
+        <div style="font-size: 0.85rem;">${playerDisplay}</div>
+        <small>Move ${moveCount}/${history.length} (${prog}%)</small>
+      `;
 
-          // Check if game is already over before evaluating
+          // Check if game is already over (prevents engine hang)
           if (tracker.game_over()) break;
 
           const fenBefore = tracker.fen();
@@ -667,7 +662,7 @@
           // Evaluate position AFTER the move
           let post;
           if (tracker.in_checkmate()) {
-            // If move delivered mate, assign max score manually to avoid engine hang
+            // Assign massive score for checkmate to avoid engine deadlock
             post = { score: (tracker.turn() === 'b' ? 100000 : -100000) };
           } else if (tracker.in_draw() || tracker.in_stalemate()) {
             post = { score: 0 };
@@ -678,7 +673,6 @@
           updateEvalBar(post.score);
 
           // 5. Blindspot Calculation
-          // (Pre-score - Post-score) * direction
           const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
 
           if (turn === uSide && gap >= currentMargin) {
@@ -702,51 +696,34 @@
           }
         }
 
-        // 6. Finalize Game as "Clean" if no blindspot found
+        // 6. Save "Clean" record if no blindspot found
         savePuzzle({
           gameId, players: playerDisplay, gain: null,
           depth: currentDepth, margin: currentMargin, date
         });
-        log(`COMPLETE: Checked ${moveCount} moves. No blindspots.`, true);
+        log(`COMPLETE: Checked ${moveCount} moves.`, true);
         updateGameListStatus();
 
       } catch (err) {
         log(`FATAL ERROR: ${err.message}`);
         console.error(err);
       } finally {
-        // 7. Cleanup & Auto-Load
+        // 7. UI Restoration & Auto-Load
         if (!isBatch) {
           toggleAnalysisUI(false);
 
           if (newlySavedPuzzleId) {
             const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
             const puzzle = items.find(x => x.id === newlySavedPuzzleId);
-            if (puzzle) showPuzzle(puzzle);
+            if (puzzle) {
+              showPuzzle(puzzle);
+              log("Blindspot found! Puzzle loaded for training.", true);
+            }
           } else {
             UI.hint.textContent = "Analysis complete. No blindspot found.";
           }
         }
       }
-    }
-
-    async function onBatch() {
-      const options = Array.from(UI.gameList.options);
-      if (options.length === 0) return;
-
-      state_.isBatchRunning = true;
-      toggleAnalysisUI(true);
-
-      log(`Starting batch analysis of ${options.length} games...`, true);
-
-      for (let i = 0; i < options.length; i++) {
-        if (!state_.isBatchRunning) break;
-        UI.gameList.selectedIndex = i;
-        await runAnalysis(true);
-      }
-
-      state_.isBatchRunning = false;
-      toggleAnalysisUI(false);
-      UI.hint.textContent = "Batch complete. Select a puzzle to begin.";
     }
 
     function renderSavedPuzzles() {
