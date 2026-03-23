@@ -504,21 +504,44 @@
     async function evaluate(fen, depth) {
       const engine = await getEngine();
       const side = fen.split(" ")[1];
+
       return new Promise(resolve => {
+        let lastScore = 0;
+        let lastPv = "";
+
         const onMsg = (e) => {
-          if (e.data.startsWith("bestmove")) {
-            const move = e.data.split(" ")[1];
-            engine.removeEventListener("message", onMsg);
-            resolve({ score: lastScore, best: move, pv: lastPv });
-          }
-          if (e.data.includes("score cp")) {
-            const match = e.data.match(/score cp (-?\d+)/);
-            if (match) lastScore = parseInt(match[1]) * (side === 'b' ? -1 : 1);
+          if (e.data.includes("score")) {
+            const cpMatch = e.data.match(/score cp (-?\d+)/);
+            if (cpMatch) {
+              lastScore = parseInt(cpMatch[1]) * (side === 'b' ? -1 : 1);
+            }
+
+            const mateMatch = e.data.match(/score mate (-?\d+)/);
+            if (mateMatch) {
+              const mateIn = parseInt(mateMatch[1]);
+              // High constant for mate, adjusted for side
+              const mateValue = (mateIn === 0) ? 100000 : 20000;
+              lastScore = (mateIn >= 0 ? mateValue : -mateValue) * (side === 'b' ? -1 : 1);
+            }
+
             const pvMatch = e.data.match(/ pv (.+)/);
             if (pvMatch) lastPv = pvMatch[1];
           }
+
+          // Handle the "Game Over" bestmove
+          if (e.data.startsWith("bestmove")) {
+            const move = e.data.split(" ")[1];
+            engine.removeEventListener("message", onMsg);
+
+            // If move is "(none)", it's checkmate or stalemate
+            resolve({
+              score: lastScore,
+              best: move === "(none)" ? null : move,
+              pv: lastPv
+            });
+          }
         };
-        let lastScore = 0, lastPv = "";
+
         engine.addEventListener("message", onMsg);
         engine.postMessage(`position fen ${fen}`);
         engine.postMessage(`go depth ${depth}`);
@@ -573,9 +596,8 @@
       const sel = UI.gameList.selectedOptions[0];
       if (!sel) return;
 
+      // 1. UI Lockdown & State Setup
       if (!isBatch) toggleAnalysisUI(true);
-
-      // Track the ID to see if a new puzzle is created during this run
       let newlySavedPuzzleId = null;
 
       try {
@@ -584,12 +606,14 @@
         const currentMargin = parseInt(document.getElementById('margin').value);
         const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
 
+        // Initial Hint Display
         UI.hint.innerHTML = `<strong>Analyzing:</strong> ${playerDisplay}<br>
-                         <small id="analysis-progress">Starting scan...</small>`;
+                         <small id="analysis-progress">Initializing engine...</small>`;
 
         log("------------------------------------------", true);
         log(`ANALYZING: ${playerDisplay}`, true);
 
+        // 2. Skip Logic (If settings match saved record)
         const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
         const savedPuzzle = existingPuzzles.find(p => p.gameId === gameId);
 
@@ -601,6 +625,7 @@
           }
         }
 
+        // 3. Game Initialization
         const game = new Chess();
         if (!game.load_pgn(pgn)) {
           log("ERROR: Could not parse PGN.");
@@ -616,58 +641,89 @@
         state_.board.orientation(uSide);
         state_.board.position('start');
 
+        // 4. Analysis Loop
         for (const move of history) {
           if (isBatch && !state_.isBatchRunning) return;
           moveCount++;
 
+          // Update Live Progress
           const prog = Math.round((moveCount / history.length) * 100);
           const progressEl = document.getElementById('analysis-progress');
           if (progressEl) progressEl.innerText = `Move ${moveCount}/${history.length} (${prog}%)`;
 
+          // Check if game is already over before evaluating
+          if (tracker.game_over()) break;
+
           const fenBefore = tracker.fen();
           const turn = tracker.turn() === 'w' ? 'white' : 'black';
 
+          // Evaluate position BEFORE the move
           const analysis = await evaluate(fenBefore, currentDepth);
+
+          // Execute the move in our tracker
           tracker.move(move);
           state_.board.position(tracker.fen());
 
-          const post = await evaluate(tracker.fen(), currentDepth);
+          // Evaluate position AFTER the move
+          let post;
+          if (tracker.in_checkmate()) {
+            // If move delivered mate, assign max score manually to avoid engine hang
+            post = { score: (tracker.turn() === 'b' ? 100000 : -100000) };
+          } else if (tracker.in_draw() || tracker.in_stalemate()) {
+            post = { score: 0 };
+          } else {
+            post = await evaluate(tracker.fen(), currentDepth);
+          }
+
           updateEvalBar(post.score);
 
+          // 5. Blindspot Calculation
+          // (Pre-score - Post-score) * direction
           const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
 
           if (turn === uSide && gap >= currentMargin) {
             log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
 
-            newlySavedPuzzleId = Date.now(); // Capture ID for auto-load
+            newlySavedPuzzleId = Date.now();
             savePuzzle({
-              gameId, fen: fenBefore, side: turn, gain: `${gap} CP`,
-              id: newlySavedPuzzleId, solution: convertPvToAlgebraic(fenBefore, analysis.pv),
-              players: playerDisplay, date, depth: currentDepth, margin: currentMargin
+              gameId,
+              fen: fenBefore,
+              side: turn,
+              gain: `${gap} CP`,
+              id: newlySavedPuzzleId,
+              solution: convertPvToAlgebraic(fenBefore, analysis.pv),
+              players: playerDisplay,
+              date,
+              depth: currentDepth,
+              margin: currentMargin
             });
             updateGameListStatus();
-            return;
+            return; // Stop analyzing this game once a blindspot is found
           }
         }
 
-        savePuzzle({ gameId, players: playerDisplay, gain: null, depth: currentDepth, margin: currentMargin, date });
-        log(`COMPLETE: Checked ${moveCount} moves.`, true);
+        // 6. Finalize Game as "Clean" if no blindspot found
+        savePuzzle({
+          gameId, players: playerDisplay, gain: null,
+          depth: currentDepth, margin: currentMargin, date
+        });
+        log(`COMPLETE: Checked ${moveCount} moves. No blindspots.`, true);
         updateGameListStatus();
 
+      } catch (err) {
+        log(`FATAL ERROR: ${err.message}`);
+        console.error(err);
       } finally {
+        // 7. Cleanup & Auto-Load
         if (!isBatch) {
           toggleAnalysisUI(false);
 
-          // AUTO-LOAD LOGIC:
           if (newlySavedPuzzleId) {
             const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
             const puzzle = items.find(x => x.id === newlySavedPuzzleId);
-            if (puzzle) {
-              showPuzzle(puzzle);
-              log("Puzzle loaded for training.", true);
-            }
+            if (puzzle) showPuzzle(puzzle);
           } else {
-            UI.hint.textContent = "Analysis finished. No blindspot found.";
+            UI.hint.textContent = "Analysis complete. No blindspot found.";
           }
         }
       }
