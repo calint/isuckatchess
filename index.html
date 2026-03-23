@@ -243,10 +243,23 @@
       renderSavedPuzzles();
     }
 
-    // --- Core UI Logic ---
-    function updateUI() {
+    function updateEvalBar(cp) {
+      // 50% is equal. +2000 CP (mate threat/huge lead) is 100%, -2000 CP is 0%
+      const p = Math.max(0, Math.min(100, 50 + (cp / 40)));
+      UI.evalFill.style.height = p + "%";
+    }
+
+    async function updateUI() {
       const p = state_.current_puzzle;
       if (!p) return;
+
+      const fen = state_.training_game.fen();
+      state_.board.position(fen);
+
+      // Get current eval to move the bar
+      const analysis = await evaluate(fen, 10); // Low depth for speed
+      updateEvalBar(analysis.score);
+
       const sol = p.solution.split(" ");
       const curIdx = state_.training_game.history().length;
       const totalPlayerMoves = Math.ceil(sol.length / 2);
@@ -402,6 +415,7 @@
           if (!move || move.san !== sol[history]) return 'snapback';
 
           state_.training_game.move(move.san);
+
           const nextIdx = state_.training_game.history().length;
 
           if (nextIdx < sol.length) {
@@ -505,9 +519,11 @@
 
         game.move(move);
         state_.board.position(game.fen());
+        const post = await evaluate(game.fen(), depth);
+        updateEvalBar(post.score);
+
         await new Promise(r => setTimeout(r, 300));
 
-        const post = await evaluate(game.fen(), depth);
         const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
 
         if (turn === uSide && gap >= margin) {
