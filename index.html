@@ -172,6 +172,7 @@
           <button id="btnStop" style="flex: 1; background: #c62828; display: none;">Stop</button>
         </div>
         <div id="log">Ready.</div>
+        <button id="btnClearLog" style="background: #455a64; margin-top: 5px; font-size: 0.8rem;">Clear Log</button>
       </section>
     </div>
 
@@ -235,6 +236,7 @@
       document.getElementById('btnLoad').onclick = onLoadGames;
       document.getElementById('btnAnalyze').onclick = onAnalyze;
       document.getElementById('btnBatch').onclick = onBatch;
+      document.getElementById('btnClearLog').onclick = onClearLog;
       UI.btnStop.onclick = onStop;
       UI.btnSolution.onclick = onSolution;
       document.getElementById('btnPrev').onclick = onStepBack;
@@ -243,7 +245,35 @@
       renderSavedPuzzles();
     }
 
-    function onAnalyze() { runAnalysis(false); }
+    function onClearLog() {
+      UI.log.innerHTML = "Ready.";
+    }
+
+    function onAnalyze() {
+      const sel = UI.gameList.selectedOptions[0];
+      if (!sel) return;
+
+      const { gameId } = sel.dataset;
+      const currentDepth = parseInt(UI.lookahead?.value || 12);
+      const currentMargin = parseInt(document.getElementById('margin').value);
+
+      // Check if we already have a puzzle with these exact settings
+      const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      const savedPuzzle = existingPuzzles.find(p =>
+        p.gameId === gameId &&
+        p.depth === currentDepth &&
+        p.margin === currentMargin &&
+        p.gain !== null // Ensure it's a puzzle, not just a "clean" record
+      );
+
+      if (savedPuzzle) {
+        log(`Match found in local storage (Depth ${currentDepth}, Margin ${currentMargin}). Loading...`, true);
+        showPuzzle(savedPuzzle);
+      } else {
+        // No match? Run the actual engine analysis
+        runAnalysis(false);
+      }
+    }
 
     function onStop() {
       state_.isBatchRunning = false;
