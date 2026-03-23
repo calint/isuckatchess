@@ -441,7 +441,6 @@
       }
     }
 
-    // --- Data Management: Delete Function ---
     function deletePuzzle(id) {
       const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
       const filtered = items.filter(p => p.id !== id);
@@ -455,31 +454,6 @@
         UI.hint.textContent = "Select a puzzle...";
         UI.puzzleHeader.style.display = 'none';
       }
-    }
-
-    function renderSavedPuzzles() {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').filter(p => !p.isClean);
-      UI.puzzles.innerHTML = "<h3>Saved Puzzles</h3>";
-
-      items.sort((a, b) => a.solved - b.solved).forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'puzzle-item';
-        div.style.opacity = p.solved ? "0.6" : "1";
-
-        // Grid layout for puzzle item to handle click vs delete button
-        div.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div onclick="loadPuzzleById(${p.id})" style="flex-grow: 1;">
-          <strong>${p.players}</strong> ${p.solved ? '✅' : ''}<br>
-          <small>${p.gain} | ${p.date}</small>
-        </div>
-        <button onclick="deletePuzzle(${p.id})" 
-                style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
-          Del
-        </button>
-      </div>`;
-        UI.puzzles.appendChild(div);
-      });
     }
 
     // Helper to bridge the click to showPuzzle
@@ -564,67 +538,72 @@
       UI.log.scrollTop = UI.log.scrollHeight;
     }
 
+    // Replace your existing runAnalysis with this version
     async function runAnalysis(isBatch = false) {
       const sel = UI.gameList.selectedOptions[0];
       if (!sel) return;
       const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
 
-      // Get current settings
       const currentDepth = parseInt(UI.lookahead?.value || 12);
       const currentMargin = parseInt(document.getElementById('margin').value);
+      const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
 
-      // 1. Logic to check if re-analysis is needed
+      // Log Header
+      log("------------------------------------------", true);
+      log(`ANALYZING: ${playerDisplay}`, true);
+      log(`Date: ${date} | Depth: ${currentDepth} | Margin: ${currentMargin}cp`);
+
       const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
       const savedPuzzle = existingPuzzles.find(p => p.gameId === gameId);
 
+      // Skip logic
       if (isBatch && savedPuzzle) {
-        const depthMatch = savedPuzzle.depth === currentDepth;
-        const marginMatch = savedPuzzle.margin === currentMargin;
-
-        if (depthMatch && marginMatch) {
-          log(`Skipping ${whiteName}: Settings match saved puzzle.`);
+        if (savedPuzzle.depth === currentDepth && savedPuzzle.margin === currentMargin) {
+          log(`SKIPPING: Settings match existing ${savedPuzzle.gain ? 'puzzle' : 'record'}.`);
+          updateGameListStatus();
           return;
-        } else {
-          log(`Re-analyzing ${whiteName}: Settings changed (${savedPuzzle.depth}d/${savedPuzzle.margin}cp → ${currentDepth}d/${currentMargin}cp)`);
         }
+        log(`RE-SCANNING: Settings changed.`);
       }
 
       const game = new Chess();
-      game.load_pgn(pgn);
+      if (!game.load_pgn(pgn)) {
+        log("ERROR: Could not parse PGN.");
+        return;
+      }
 
       const user = UI.player.value.toLowerCase();
       const uSide = blackName.toLowerCase() === user ? 'black' : 'white';
-      const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
-
       const history = game.history({ verbose: true });
 
       state_.board.orientation(uSide);
-      game.reset();
       state_.board.position('start');
+
+      // We use a separate tracking game to step through the moves
+      const tracker = new Chess();
+      let moveCount = 0;
 
       for (const move of history) {
         if (isBatch && !state_.isBatchRunning) return;
+        moveCount++;
 
-        const fenBefore = game.fen();
-        const turn = game.turn() === 'w' ? 'white' : 'black';
+        const fenBefore = tracker.fen();
+        const turn = tracker.turn() === 'w' ? 'white' : 'black';
 
-        // Use currentDepth here
         const analysis = await evaluate(fenBefore, currentDepth);
 
-        game.move(move);
-        state_.board.position(game.fen());
-        const post = await evaluate(game.fen(), currentDepth);
-        updateEvalBar(post.score);
+        tracker.move(move);
+        state_.board.position(tracker.fen());
 
-        await new Promise(r => setTimeout(r, 100));
+        const post = await evaluate(tracker.fen(), currentDepth);
+        updateEvalBar(post.score);
 
         const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
 
-        // Use currentMargin here
         if (turn === uSide && gap >= currentMargin) {
-          log(`Found Blindspot in ${playerDisplay}!`, true);
+          log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
 
-          const p = {
+          savePuzzle({
             gameId,
             fen: fenBefore,
             side: turn,
@@ -633,16 +612,48 @@
             solution: convertPvToAlgebraic(fenBefore, analysis.pv),
             players: playerDisplay,
             date,
-            depth: currentDepth,   // Save new depth
-            margin: currentMargin  // Save new margin
-          };
-
-          savePuzzle(p);
+            depth: currentDepth,
+            margin: currentMargin
+          });
+          updateGameListStatus();
           return;
         }
       }
 
-      if (!isBatch) log("No blindspots found.");
+      // If we reach here, no blindspot was found. Save a "Clean" record.
+      savePuzzle({
+        gameId, players: playerDisplay, gain: null,
+        depth: currentDepth, margin: currentMargin, date
+      });
+
+      log(`COMPLETE: Checked ${moveCount} moves. No blindspots found.`);
+      updateGameListStatus();
+    }
+
+    function renderSavedPuzzles() {
+      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]')
+        .filter(p => p.gain !== null); // Only show actual puzzles
+
+      UI.puzzles.innerHTML = "<h3>Saved Puzzles</h3>";
+
+      items.sort((a, b) => a.solved - b.solved).forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'puzzle-item';
+        div.style.opacity = p.solved ? "0.6" : "1";
+
+        div.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div onclick="loadPuzzleById(${p.id})" style="flex-grow: 1;">
+          <strong>${p.players}</strong> ${p.solved ? '✅' : ''}<br>
+          <small>${p.gain} | ${p.date} (${p.depth}d)</small>
+        </div>
+        <button onclick="deletePuzzle(${p.id})" 
+                style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
+          Del
+        </button>
+      </div>`;
+        UI.puzzles.appendChild(div);
+      });
     }
 
     function updateGameListStatus() {
