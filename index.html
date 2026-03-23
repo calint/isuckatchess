@@ -562,13 +562,15 @@
 
       if (!isBatch) toggleAnalysisUI(true);
 
+      // Track the ID to see if a new puzzle is created during this run
+      let newlySavedPuzzleId = null;
+
       try {
         const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
         const currentDepth = parseInt(UI.lookahead?.value || 12);
         const currentMargin = parseInt(document.getElementById('margin').value);
         const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
 
-        // Show initial game info in Hint box
         UI.hint.innerHTML = `<strong>Analyzing:</strong> ${playerDisplay}<br>
                          <small id="analysis-progress">Starting scan...</small>`;
 
@@ -605,7 +607,6 @@
           if (isBatch && !state_.isBatchRunning) return;
           moveCount++;
 
-          // Update Live Progress in Hint
           const prog = Math.round((moveCount / history.length) * 100);
           const progressEl = document.getElementById('analysis-progress');
           if (progressEl) progressEl.innerText = `Move ${moveCount}/${history.length} (${prog}%)`;
@@ -624,9 +625,11 @@
 
           if (turn === uSide && gap >= currentMargin) {
             log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
+
+            newlySavedPuzzleId = Date.now(); // Capture ID for auto-load
             savePuzzle({
               gameId, fen: fenBefore, side: turn, gain: `${gap} CP`,
-              id: Date.now(), solution: convertPvToAlgebraic(fenBefore, analysis.pv),
+              id: newlySavedPuzzleId, solution: convertPvToAlgebraic(fenBefore, analysis.pv),
               players: playerDisplay, date, depth: currentDepth, margin: currentMargin
             });
             updateGameListStatus();
@@ -641,12 +644,22 @@
       } finally {
         if (!isBatch) {
           toggleAnalysisUI(false);
-          UI.hint.textContent = "Analysis finished. Select a puzzle...";
+
+          // AUTO-LOAD LOGIC:
+          if (newlySavedPuzzleId) {
+            const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+            const puzzle = items.find(x => x.id === newlySavedPuzzleId);
+            if (puzzle) {
+              showPuzzle(puzzle);
+              log("Puzzle loaded for training.", true);
+            }
+          } else {
+            UI.hint.textContent = "Analysis finished. No blindspot found.";
+          }
         }
       }
     }
 
-    // 3. Update the end of onBatch to restore UI
     async function onBatch() {
       const options = Array.from(UI.gameList.options);
       if (options.length === 0) return;
