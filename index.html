@@ -479,7 +479,7 @@
         p.solved = true;
         localStorage.setItem('chess_puzzles', JSON.stringify(items));
         renderSavedPuzzles();
-        UI.hint.innerHTML = "<span style='color:green; font-weight:bold;'>✔ Puzzle Complete!</span>";
+        UI.hint.innerHTML = "<span style='color:green; font-weight:bold;'>Puzzle Complete!</span>";
         log(`Done: ${p.players}`, true);
       }
     }
@@ -516,20 +516,25 @@
       const sol = p.solution.split(" ");
       state_.board = Chessboard('board', {
         draggable: true, position: p.fen, orientation: p.side, pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
+        // Inside showPuzzle function...
         onDrop: (s, t) => {
           const move = new Chess(state_.training_game.fen()).move({ from: s, to: t, promotion: 'q' });
           if (!move || move.san !== sol[state_.training_game.history().length]) return 'snapback';
+
           state_.training_game.move(move.san);
           state_.board.position(state_.training_game.fen());
           const next = state_.training_game.history().length;
+
           if (next < sol.length) {
             setTimeout(() => {
               state_.training_game.move(sol[next]);
               state_.board.position(state_.training_game.fen());
-              UI.hint.innerHTML = "<strong>Your Turn:</strong> Keep going...";
+              UI.hint.innerHTML = "<strong>Your Turn:</strong>";
+              // Check after engine move
               if (state_.training_game.history().length >= sol.length) markSolved(p.id);
             }, 600);
           } else {
+            // Check after final player move
             markSolved(p.id);
           }
         }
@@ -558,6 +563,7 @@
       if (cur < sol.length) {
         state_.training_game.move(sol[cur]);
         state_.board.position(state_.training_game.fen());
+
         const next = state_.training_game.history().length;
         if (next < sol.length) {
           await new Promise(r => setTimeout(r, 400));
@@ -565,7 +571,10 @@
           state_.board.position(state_.training_game.fen());
         }
       }
-      if (state_.training_game.history().length >= sol.length) markSolved(p.id);
+      // Check for completion after the potential double-step
+      if (state_.training_game.history().length >= sol.length) {
+        markSolved(p.id);
+      }
     }
 
     window.onload = init;
