@@ -431,20 +431,33 @@
     }
 
     function toggleAnalysisUI(isAnalyzing) {
+      // Select specific navigation and action buttons
       const elements = [
         document.getElementById('btnAnalyze'),
         document.getElementById('btnBatch'),
         document.getElementById('btnLoad'),
         document.getElementById('btnReload'),
+        document.getElementById('btnPrev'),
+        document.getElementById('btn-hint'),
+        document.getElementById('btnNext'),
+        document.getElementById('btnSolution'),
         UI.player, UI.year, UI.month, UI.gameList,
         document.getElementById('lookahead'),
         document.getElementById('margin')
       ];
 
+      // Hide the labels in the settings row
+      const labels = document.querySelectorAll('.settings-row label');
+
       elements.forEach(el => {
         if (el) el.style.display = isAnalyzing ? 'none' : 'block';
       });
 
+      labels.forEach(lbl => {
+        lbl.style.display = isAnalyzing ? 'none' : 'block';
+      });
+
+      // Only show Stop during analysis
       UI.btnStop.style.display = isAnalyzing ? 'block' : 'none';
     }
 
