@@ -442,12 +442,27 @@
       const data = await res.json();
       UI.gameList.innerHTML = "";
       const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+
       data.games.reverse().forEach((g, i) => {
         const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
         const record = puzzles.find(p => p.gameId === gameId);
         const prefix = record ? (record.isClean ? "✔ " : "⭐ ") : "";
-        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} vs ${g.black.username}`, i);
-        Object.assign(opt.dataset, { pgn: g.pgn, gameId: gameId, date: new Date(g.end_time * 1000).toLocaleDateString() });
+
+        // Extract ratings safely
+        const wR = g.white.rating || "?";
+        const bR = g.black.rating || "?";
+
+        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} (${wR}) vs ${g.black.username} (${bR})`, i);
+
+        Object.assign(opt.dataset, {
+          pgn: g.pgn,
+          gameId: gameId,
+          date: new Date(g.end_time * 1000).toLocaleDateString(),
+          whiteName: g.white.username,
+          blackName: g.black.username,
+          wR: wR,
+          bR: bR
+        });
         UI.gameList.add(opt);
       });
     }
@@ -460,35 +475,58 @@
       UI.log.scrollTop = UI.log.scrollHeight;
     }
 
-    async function runAnalysis(isBatch = false) {
+    async function runAnalysis() {
       const sel = UI.gameList.selectedOptions[0];
       if (!sel) return;
-      const { pgn, gameId, date } = sel.dataset;
+      const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
+
       const game = new Chess();
       game.load_pgn(pgn);
+
       const user = UI.player.value.toLowerCase();
-      const uSide = game.header().Black.toLowerCase() === user ? 'black' : 'white';
+      const uSide = blackName.toLowerCase() === user ? 'black' : 'white';
+      const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
+
       const history = game.history({ verbose: true });
-      const depth = parseInt(document.getElementById('lookahead').value);
+      const depth = parseInt(UI.lookahead?.value || 12);
       const margin = parseInt(document.getElementById('margin').value);
 
+      state_.board.orientation(uSide);
       game.reset();
+      state_.board.position('start');
+
+      log(`Analyzing: ${playerDisplay}`, true);
+
       for (const move of history) {
-        const fen = game.fen();
+        const fenBefore = game.fen();
         const turn = game.turn() === 'w' ? 'white' : 'black';
-        const analysis = await evaluate(fen, depth);
+
+        const analysis = await evaluate(fenBefore, depth);
+
         game.move(move);
+        state_.board.position(game.fen());
+        await new Promise(r => setTimeout(r, 300));
+
         const post = await evaluate(game.fen(), depth);
         const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
 
         if (turn === uSide && gap >= margin) {
+          log(`Found Blindspot! Loss: ${gap} CP`, true);
+
           const p = {
-            gameId, fen, side: turn, gain: `${gap} CP`, id: Date.now(),
-            solution: convertPvToAlgebraic(fen, analysis.pv),
-            players: `${game.header().White} vs ${game.header().Black}`, date
+            gameId,
+            fen: fenBefore,
+            side: turn,
+            gain: `${gap} CP`,
+            id: Date.now(),
+            solution: convertPvToAlgebraic(fenBefore, analysis.pv),
+            players: playerDisplay, // Correctly formatted string
+            date,
+            depth,
+            margin
           };
+
           savePuzzle(p);
-          showPuzzle(p);
           return;
         }
       }
