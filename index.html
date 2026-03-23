@@ -37,14 +37,6 @@
       padding: 2rem;
     }
 
-    .panel {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-      height: fit-content;
-    }
-
     input,
     select,
     button {
@@ -78,14 +70,33 @@
       font-family: 'Courier New', monospace;
       font-size: 0.75rem;
       height: 300px;
+      width: 100%;
+      /* Occupy full parent width */
+      box-sizing: border-box;
+      /* Include padding in width calculation */
       overflow-y: auto;
+      overflow-x: hidden;
+      /* Prevent horizontal scrolling */
       background: #222;
       color: #00ff00;
       padding: 0.8rem;
       border-radius: 4px;
       margin-top: 10px;
       line-height: 1.4;
-      white-space: pre;
+      white-space: pre-wrap;
+      /* Wrap long lines instead of pushing width */
+      word-break: break-all;
+      /* Force break very long strings */
+    }
+
+    .panel {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      height: fit-content;
+      min-width: 0;
+      /* Allows the panel to shrink/fit grid correctly */
     }
 
     .puzzle-item {
