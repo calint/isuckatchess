@@ -480,8 +480,6 @@
         localStorage.setItem('chess_puzzles', JSON.stringify(items));
         renderSavedPuzzles();
         UI.hint.innerHTML = "<span style='color:green; font-weight:bold;'>✔ Puzzle Complete!</span>";
-        UI.phEval.textContent = "Great job! Position improved.";
-        UI.phEval.style.color = "#4caf50";
         log(`Done: ${p.players}`, true);
       }
     }
@@ -513,7 +511,7 @@
       UI.solutionText.style.display = 'none';
       UI.btnSolution.style.display = 'block';
       UI.hint.style.display = 'block';
-      UI.hint.innerHTML = `<strong>Your Turn:</strong> Find the best ${p.side} move.`;
+      UI.hint.innerHTML = `<strong>Your turn</strong>`;
 
       const sol = p.solution.split(" ");
       state_.board = Chessboard('board', {
