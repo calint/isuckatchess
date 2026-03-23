@@ -399,12 +399,6 @@
       log("Batch analysis complete.", true);
     }
 
-    function updateEvalBar(cp) {
-      // 50% is equal. +2000 CP (mate threat/huge lead) is 100%, -2000 CP is 0%
-      const p = Math.max(0, Math.min(100, 50 + (cp / 40)));
-      UI.evalFill.style.height = p + "%";
-    }
-
     async function updateUI() {
       const p = state_.current_puzzle;
       if (!p) return;
@@ -428,6 +422,30 @@
         UI.hint.innerHTML = `<strong>Your Turn:</strong> Move ${currentPlayerMove} of ${totalPlayerMoves}`;
       }
       state_.board.position(state_.training_game.fen());
+    }
+
+    function updateEvalBar(cp) {
+      // 50% is equal. +2000 CP (mate threat/huge lead) is 100%, -2000 CP is 0%
+      const p = Math.max(0, Math.min(100, 50 + (cp / 40)));
+      UI.evalFill.style.height = p + "%";
+    }
+
+    function toggleAnalysisUI(isAnalyzing) {
+      const elements = [
+        document.getElementById('btnAnalyze'),
+        document.getElementById('btnBatch'),
+        document.getElementById('btnLoad'),
+        document.getElementById('btnReload'),
+        UI.player, UI.year, UI.month, UI.gameList,
+        document.getElementById('lookahead'),
+        document.getElementById('margin')
+      ];
+
+      elements.forEach(el => {
+        if (el) el.style.display = isAnalyzing ? 'none' : 'block';
+      });
+
+      UI.btnStop.style.display = isAnalyzing ? 'block' : 'none';
     }
 
     function markSolved(id) {
@@ -538,96 +556,115 @@
       UI.log.scrollTop = UI.log.scrollHeight;
     }
 
-    // Replace your existing runAnalysis with this version
     async function runAnalysis(isBatch = false) {
       const sel = UI.gameList.selectedOptions[0];
       if (!sel) return;
-      const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
 
-      const currentDepth = parseInt(UI.lookahead?.value || 12);
-      const currentMargin = parseInt(document.getElementById('margin').value);
-      const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
+      if (!isBatch) toggleAnalysisUI(true);
 
-      // Log Header
-      log("------------------------------------------", true);
-      log(`ANALYZING: ${playerDisplay}`, true);
-      log(`Date: ${date} | Depth: ${currentDepth} | Margin: ${currentMargin}cp`);
+      try {
+        const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
+        const currentDepth = parseInt(UI.lookahead?.value || 12);
+        const currentMargin = parseInt(document.getElementById('margin').value);
+        const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
 
-      const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      const savedPuzzle = existingPuzzles.find(p => p.gameId === gameId);
+        // Show initial game info in Hint box
+        UI.hint.innerHTML = `<strong>Analyzing:</strong> ${playerDisplay}<br>
+                         <small id="analysis-progress">Starting scan...</small>`;
 
-      // Skip logic
-      if (isBatch && savedPuzzle) {
-        if (savedPuzzle.depth === currentDepth && savedPuzzle.margin === currentMargin) {
-          log(`SKIPPING: Settings match existing ${savedPuzzle.gain ? 'puzzle' : 'record'}.`);
-          updateGameListStatus();
+        log("------------------------------------------", true);
+        log(`ANALYZING: ${playerDisplay}`, true);
+
+        const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+        const savedPuzzle = existingPuzzles.find(p => p.gameId === gameId);
+
+        if (isBatch && savedPuzzle) {
+          if (savedPuzzle.depth === currentDepth && savedPuzzle.margin === currentMargin) {
+            log(`SKIPPING: Settings match existing record.`);
+            updateGameListStatus();
+            return;
+          }
+        }
+
+        const game = new Chess();
+        if (!game.load_pgn(pgn)) {
+          log("ERROR: Could not parse PGN.");
           return;
         }
-        log(`RE-SCANNING: Settings changed.`);
-      }
 
-      const game = new Chess();
-      if (!game.load_pgn(pgn)) {
-        log("ERROR: Could not parse PGN.");
-        return;
-      }
+        const user = UI.player.value.toLowerCase();
+        const uSide = blackName.toLowerCase() === user ? 'black' : 'white';
+        const history = game.history({ verbose: true });
+        const tracker = new Chess();
+        let moveCount = 0;
 
-      const user = UI.player.value.toLowerCase();
-      const uSide = blackName.toLowerCase() === user ? 'black' : 'white';
-      const history = game.history({ verbose: true });
+        state_.board.orientation(uSide);
+        state_.board.position('start');
 
-      state_.board.orientation(uSide);
-      state_.board.position('start');
+        for (const move of history) {
+          if (isBatch && !state_.isBatchRunning) return;
+          moveCount++;
 
-      // We use a separate tracking game to step through the moves
-      const tracker = new Chess();
-      let moveCount = 0;
+          // Update Live Progress in Hint
+          const prog = Math.round((moveCount / history.length) * 100);
+          const progressEl = document.getElementById('analysis-progress');
+          if (progressEl) progressEl.innerText = `Move ${moveCount}/${history.length} (${prog}%)`;
 
-      for (const move of history) {
-        if (isBatch && !state_.isBatchRunning) return;
-        moveCount++;
+          const fenBefore = tracker.fen();
+          const turn = tracker.turn() === 'w' ? 'white' : 'black';
 
-        const fenBefore = tracker.fen();
-        const turn = tracker.turn() === 'w' ? 'white' : 'black';
+          const analysis = await evaluate(fenBefore, currentDepth);
+          tracker.move(move);
+          state_.board.position(tracker.fen());
 
-        const analysis = await evaluate(fenBefore, currentDepth);
+          const post = await evaluate(tracker.fen(), currentDepth);
+          updateEvalBar(post.score);
 
-        tracker.move(move);
-        state_.board.position(tracker.fen());
+          const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
 
-        const post = await evaluate(tracker.fen(), currentDepth);
-        updateEvalBar(post.score);
+          if (turn === uSide && gap >= currentMargin) {
+            log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
+            savePuzzle({
+              gameId, fen: fenBefore, side: turn, gain: `${gap} CP`,
+              id: Date.now(), solution: convertPvToAlgebraic(fenBefore, analysis.pv),
+              players: playerDisplay, date, depth: currentDepth, margin: currentMargin
+            });
+            updateGameListStatus();
+            return;
+          }
+        }
 
-        const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
+        savePuzzle({ gameId, players: playerDisplay, gain: null, depth: currentDepth, margin: currentMargin, date });
+        log(`COMPLETE: Checked ${moveCount} moves.`, true);
+        updateGameListStatus();
 
-        if (turn === uSide && gap >= currentMargin) {
-          log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
-
-          savePuzzle({
-            gameId,
-            fen: fenBefore,
-            side: turn,
-            gain: `${gap} CP`,
-            id: Date.now(),
-            solution: convertPvToAlgebraic(fenBefore, analysis.pv),
-            players: playerDisplay,
-            date,
-            depth: currentDepth,
-            margin: currentMargin
-          });
-          updateGameListStatus();
-          return;
+      } finally {
+        if (!isBatch) {
+          toggleAnalysisUI(false);
+          UI.hint.textContent = "Analysis finished. Select a puzzle...";
         }
       }
+    }
 
-      // If we reach here, no blindspot was found. Save a "Clean" record.
-      savePuzzle({
-        gameId, players: playerDisplay, gain: null,
-        depth: currentDepth, margin: currentMargin, date
-      });
+    // 3. Update the end of onBatch to restore UI
+    async function onBatch() {
+      const options = Array.from(UI.gameList.options);
+      if (options.length === 0) return;
 
-      log(`COMPLETE: Checked ${moveCount} moves. No blindspots found.`);
-      updateGameListStatus();
+      state_.isBatchRunning = true;
+      toggleAnalysisUI(true);
+
+      log(`Starting batch analysis of ${options.length} games...`, true);
+
+      for (let i = 0; i < options.length; i++) {
+        if (!state_.isBatchRunning) break;
+        UI.gameList.selectedIndex = i;
+        await runAnalysis(true);
+      }
+
+      state_.isBatchRunning = false;
+      toggleAnalysisUI(false);
+      UI.hint.textContent = "Batch complete. Select a puzzle to begin.";
     }
 
     function renderSavedPuzzles() {
