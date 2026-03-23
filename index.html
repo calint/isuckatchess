@@ -230,17 +230,178 @@
 
     function init() {
       state_.board = Chessboard('board', { position: 'start', pieceTheme: 'img/chesspieces/wikipedia/{piece}.png' });
-      document.getElementById('btn-hint').onclick = showPieceHint;
-      document.getElementById('btnReload').onclick = () => { UI.gameList.innerHTML = ""; loadArchives(); };
-      document.getElementById('btnLoad').onclick = loadGamesForMonth;
-      document.getElementById('btnAnalyze').onclick = () => runAnalysis(false);
-      document.getElementById('btnBatch').onclick = runBatchAnalysis;
-      UI.btnStop.onclick = () => { state_.isBatchRunning = false; };
-      UI.btnSolution.onclick = playSolution;
-      document.getElementById('btnPrev').onclick = stepBack;
-      document.getElementById('btnNext').onclick = stepForward;
-      loadArchives();
+      document.getElementById('btn-hint').onclick = onShowHint;
+      document.getElementById('btnReload').onclick = onLoadArchives;
+      document.getElementById('btnLoad').onclick = onLoadGames;
+      document.getElementById('btnAnalyze').onclick = onAnalyze;
+      document.getElementById('btnBatch').onclick = onBatch;
+      UI.btnStop.onclick = onStop;
+      UI.btnSolution.onclick = onSolution;
+      document.getElementById('btnPrev').onclick = onStepBack;
+      document.getElementById('btnNext').onclick = onStepForward;
+      onLoadArchives();
       renderSavedPuzzles();
+    }
+
+    function onAnalyze() { runAnalysis(false); }
+
+    function onStop() {
+      state_.isBatchRunning = false;
+      log("Stopping... please wait for current game to finish.");
+    }
+
+    // --- Navigation ---
+    function onStepBack() {
+      state_.training_game.undo(); // Undo engine reply
+      state_.training_game.undo(); // Undo player move
+      updateUI();
+    }
+
+    // --- Navigation Fix: Smooth Sliding ---
+    async function onStepForward() {
+      const p = state_.current_puzzle;
+      if (!p) return;
+      const sol = p.solution.split(" ");
+      let cur = state_.training_game.history().length;
+
+      if (cur < sol.length) {
+        // 1. Play Player Move
+        state_.training_game.move(sol[cur]);
+        state_.board.position(state_.training_game.fen()); // Force slide for player move
+        cur++;
+
+        // 2. Wait for animation, then play Computer Reply
+        if (cur < sol.length) {
+          await new Promise(r => setTimeout(r, 600)); // Match or exceed board transition speed
+          state_.training_game.move(sol[cur]);
+          updateUI(); // This handles the second slide/jump and status
+        } else {
+          updateUI();
+        }
+      }
+    }
+
+
+    // --- Data Fetching & Helpers ---
+    async function onLoadArchives() {
+      UI.gameList.innerHTML = "";
+      const user = UI.player.value.trim();
+      if (!user) return;
+      const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
+      const data = await res.json();
+      const archives = data.archives.map(url => {
+        const p = url.split('/');
+        return { year: p[p.length - 2], month: p[p.length - 1] };
+      }).sort((a, b) => b.year - a.year || b.month - a.month);
+
+      UI.year.innerHTML = "";
+      [...new Set(archives.map(a => a.year))].forEach(y => UI.year.add(new Option(y, y)));
+      UI.year.onchange = () => {
+        UI.month.innerHTML = "";
+        archives.filter(a => a.year === UI.year.value).forEach(a => UI.month.add(new Option(a.month, a.month)));
+      };
+      UI.year.onchange();
+    }
+
+    async function onLoadGames() {
+      const res = await fetch(`https://api.chess.com/pub/player/${UI.player.value}/games/${UI.year.value}/${UI.month.value}`);
+      const data = await res.json();
+      UI.gameList.innerHTML = "";
+      const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+
+      data.games.reverse().forEach((g, i) => {
+        const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
+        const record = puzzles.find(p => p.gameId === gameId);
+        const prefix = record ? (record.isClean ? "✔ " : "⭐ ") : "";
+
+        // Extract ratings safely
+        const wR = g.white.rating || "?";
+        const bR = g.black.rating || "?";
+
+        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} (${wR}) vs ${g.black.username} (${bR})`, i);
+
+        Object.assign(opt.dataset, {
+          pgn: g.pgn,
+          gameId: gameId,
+          date: new Date(g.end_time * 1000).toLocaleDateString(),
+          whiteName: g.white.username,
+          blackName: g.black.username,
+          wR: wR,
+          bR: bR
+        });
+        UI.gameList.add(opt);
+      });
+    }
+    function onShowHint() {
+      const p = state_.current_puzzle;
+      if (!p) return;
+
+      const sol = p.solution.split(" ");
+      const cur = state_.training_game.history().length;
+
+      // If we've reached the end of the solution, don't show a hint
+      if (cur >= sol.length) return;
+
+      const temp = new Chess(state_.training_game.fen());
+      const move = temp.move(sol[cur]);
+
+      if (move) {
+        // Map the single character to the full name
+        const pieceNames = {
+          'p': 'pawn',
+          'n': 'knight',
+          'b': 'bishop',
+          'r': 'rook',
+          'q': 'queen',
+          'k': 'king'
+        };
+
+        const fullName = pieceNames[move.piece] || 'piece';
+        UI.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${fullName}</u> on <strong>${move.from}</strong>`;
+      }
+    }
+
+    async function onSolution() {
+      const sol = state_.current_puzzle.solution.split(" ");
+      state_.training_game.load(state_.current_puzzle.fen);
+      for (const m of sol) {
+        await new Promise(r => setTimeout(r, 500));
+        state_.training_game.move(m);
+        updateUI();
+      }
+    }
+
+    async function onBatch() {
+      const options = Array.from(UI.gameList.options);
+      if (options.length === 0) {
+        log("No games loaded to batch analyze.");
+        return;
+      }
+
+      state_.isBatchRunning = true;
+      UI.btnBatch.style.display = 'none';
+      UI.btnStop.style.display = 'block';
+
+      log(`Starting batch analysis of ${options.length} games...`, true);
+
+      for (let i = 0; i < options.length; i++) {
+        if (!state_.isBatchRunning) {
+          log("Batch analysis stopped by user.");
+          break;
+        }
+
+        // Visually select the game in the list
+        UI.gameList.selectedIndex = i;
+        log(`Processing game ${i + 1}/${options.length}...`);
+
+        // We pass 'true' to runAnalysis to signal it's part of a batch
+        await runAnalysis(true);
+      }
+
+      state_.isBatchRunning = false;
+      UI.btnBatch.style.display = 'block';
+      UI.btnStop.style.display = 'none';
+      log("Batch analysis complete.", true);
     }
 
     function updateEvalBar(cp) {
@@ -282,37 +443,6 @@
         localStorage.setItem('chess_puzzles', JSON.stringify(items));
         renderSavedPuzzles();
         log(`Completed: ${p.players}`, true);
-      }
-    }
-
-    // --- Navigation ---
-    function stepBack() {
-      state_.training_game.undo(); // Undo engine reply
-      state_.training_game.undo(); // Undo player move
-      updateUI();
-    }
-
-    // --- Navigation Fix: Smooth Sliding ---
-    async function stepForward() {
-      const p = state_.current_puzzle;
-      if (!p) return;
-      const sol = p.solution.split(" ");
-      let cur = state_.training_game.history().length;
-
-      if (cur < sol.length) {
-        // 1. Play Player Move
-        state_.training_game.move(sol[cur]);
-        state_.board.position(state_.training_game.fen()); // Force slide for player move
-        cur++;
-
-        // 2. Wait for animation, then play Computer Reply
-        if (cur < sol.length) {
-          await new Promise(r => setTimeout(r, 600)); // Match or exceed board transition speed
-          state_.training_game.move(sol[cur]);
-          updateUI(); // This handles the second slide/jump and status
-        } else {
-          updateUI();
-        }
       }
     }
 
@@ -431,56 +561,6 @@
       updateUI();
     }
 
-    // --- Data Fetching & Helpers ---
-    async function loadArchives() {
-      const user = UI.player.value.trim();
-      if (!user) return;
-      const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
-      const data = await res.json();
-      const archives = data.archives.map(url => {
-        const p = url.split('/');
-        return { year: p[p.length - 2], month: p[p.length - 1] };
-      }).sort((a, b) => b.year - a.year || b.month - a.month);
-
-      UI.year.innerHTML = "";
-      [...new Set(archives.map(a => a.year))].forEach(y => UI.year.add(new Option(y, y)));
-      UI.year.onchange = () => {
-        UI.month.innerHTML = "";
-        archives.filter(a => a.year === UI.year.value).forEach(a => UI.month.add(new Option(a.month, a.month)));
-      };
-      UI.year.onchange();
-    }
-
-    async function loadGamesForMonth() {
-      const res = await fetch(`https://api.chess.com/pub/player/${UI.player.value}/games/${UI.year.value}/${UI.month.value}`);
-      const data = await res.json();
-      UI.gameList.innerHTML = "";
-      const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-
-      data.games.reverse().forEach((g, i) => {
-        const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
-        const record = puzzles.find(p => p.gameId === gameId);
-        const prefix = record ? (record.isClean ? "✔ " : "⭐ ") : "";
-
-        // Extract ratings safely
-        const wR = g.white.rating || "?";
-        const bR = g.black.rating || "?";
-
-        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} (${wR}) vs ${g.black.username} (${bR})`, i);
-
-        Object.assign(opt.dataset, {
-          pgn: g.pgn,
-          gameId: gameId,
-          date: new Date(g.end_time * 1000).toLocaleDateString(),
-          whiteName: g.white.username,
-          blackName: g.black.username,
-          wR: wR,
-          bR: bR
-        });
-        UI.gameList.add(opt);
-      });
-    }
-
     function log(msg, isHeader = false) {
       const div = document.createElement('div');
       if (isHeader) div.style.color = '#fff';
@@ -489,10 +569,30 @@
       UI.log.scrollTop = UI.log.scrollHeight;
     }
 
-    async function runAnalysis() {
+    async function runAnalysis(isBatch = false) {
       const sel = UI.gameList.selectedOptions[0];
       if (!sel) return;
       const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
+
+      // Get current settings
+      const currentDepth = parseInt(UI.lookahead?.value || 12);
+      const currentMargin = parseInt(document.getElementById('margin').value);
+
+      // 1. Logic to check if re-analysis is needed
+      const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+      const savedPuzzle = existingPuzzles.find(p => p.gameId === gameId);
+
+      if (isBatch && savedPuzzle) {
+        const depthMatch = savedPuzzle.depth === currentDepth;
+        const marginMatch = savedPuzzle.margin === currentMargin;
+
+        if (depthMatch && marginMatch) {
+          log(`Skipping ${whiteName}: Settings match saved puzzle.`);
+          return;
+        } else {
+          log(`Re-analyzing ${whiteName}: Settings changed (${savedPuzzle.depth}d/${savedPuzzle.margin}cp → ${currentDepth}d/${currentMargin}cp)`);
+        }
+      }
 
       const game = new Chess();
       game.load_pgn(pgn);
@@ -502,32 +602,32 @@
       const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
 
       const history = game.history({ verbose: true });
-      const depth = parseInt(UI.lookahead?.value || 12);
-      const margin = parseInt(document.getElementById('margin').value);
 
       state_.board.orientation(uSide);
       game.reset();
       state_.board.position('start');
 
-      log(`Analyzing: ${playerDisplay}`, true);
-
       for (const move of history) {
+        if (isBatch && !state_.isBatchRunning) return;
+
         const fenBefore = game.fen();
         const turn = game.turn() === 'w' ? 'white' : 'black';
 
-        const analysis = await evaluate(fenBefore, depth);
+        // Use currentDepth here
+        const analysis = await evaluate(fenBefore, currentDepth);
 
         game.move(move);
         state_.board.position(game.fen());
-        const post = await evaluate(game.fen(), depth);
+        const post = await evaluate(game.fen(), currentDepth);
         updateEvalBar(post.score);
 
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 100));
 
         const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
 
-        if (turn === uSide && gap >= margin) {
-          log(`Found Blindspot! Loss: ${gap} CP`, true);
+        // Use currentMargin here
+        if (turn === uSide && gap >= currentMargin) {
+          log(`Found Blindspot in ${playerDisplay}!`, true);
 
           const p = {
             gameId,
@@ -536,17 +636,18 @@
             gain: `${gap} CP`,
             id: Date.now(),
             solution: convertPvToAlgebraic(fenBefore, analysis.pv),
-            players: playerDisplay, // Correctly formatted string
+            players: playerDisplay,
             date,
-            depth,
-            margin
+            depth: currentDepth,   // Save new depth
+            margin: currentMargin  // Save new margin
           };
 
           savePuzzle(p);
           return;
         }
       }
-      log("No blindspots found.");
+
+      if (!isBatch) log("No blindspots found.");
     }
 
     function convertPvToAlgebraic(fen, pv) {
@@ -566,46 +667,6 @@
       renderSavedPuzzles();
     }
 
-    function showPieceHint() {
-      const p = state_.current_puzzle;
-      if (!p) return;
-
-      const sol = p.solution.split(" ");
-      const cur = state_.training_game.history().length;
-
-      // If we've reached the end of the solution, don't show a hint
-      if (cur >= sol.length) return;
-
-      const temp = new Chess(state_.training_game.fen());
-      const move = temp.move(sol[cur]);
-
-      if (move) {
-        // Map the single character to the full name
-        const pieceNames = {
-          'p': 'pawn',
-          'n': 'knight',
-          'b': 'bishop',
-          'r': 'rook',
-          'q': 'queen',
-          'k': 'king'
-        };
-
-        const fullName = pieceNames[move.piece] || 'piece';
-        UI.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${fullName}</u> on <strong>${move.from}</strong>`;
-      }
-    }
-
-    async function playSolution() {
-      const sol = state_.current_puzzle.solution.split(" ");
-      state_.training_game.load(state_.current_puzzle.fen);
-      for (const m of sol) {
-        await new Promise(r => setTimeout(r, 500));
-        state_.training_game.move(m);
-        updateUI();
-      }
-    }
-
-    async function runBatchAnalysis() { /* Implementation same as single but in loop */ }
 
     window.onload = init;
   </script>
