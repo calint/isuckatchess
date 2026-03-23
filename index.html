@@ -307,18 +307,10 @@
       const res = await fetch(`https://api.chess.com/pub/player/${UI.player.value}/games/${UI.year.value}/${UI.month.value}`);
       const data = await res.json();
       UI.gameList.innerHTML = "";
-      const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
 
       data.games.reverse().forEach((g, i) => {
         const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
-        const record = puzzles.find(p => p.gameId === gameId);
-        const prefix = record ? (record.isClean ? "✔ " : "⭐ ") : "";
-
-        // Extract ratings safely
-        const wR = g.white.rating || "?";
-        const bR = g.black.rating || "?";
-
-        const opt = new Option(`${prefix}${new Date(g.end_time * 1000).toLocaleDateString()}: ${g.white.username} (${wR}) vs ${g.black.username} (${bR})`, i);
+        const opt = new Option("", i); // Text set by updateGameListStatus
 
         Object.assign(opt.dataset, {
           pgn: g.pgn,
@@ -326,12 +318,15 @@
           date: new Date(g.end_time * 1000).toLocaleDateString(),
           whiteName: g.white.username,
           blackName: g.black.username,
-          wR: wR,
-          bR: bR
+          wR: g.white.rating || "?",
+          bR: g.black.rating || "?"
         });
         UI.gameList.add(opt);
       });
+
+      updateGameListStatus(); // Apply emojis immediately
     }
+
     function onShowHint() {
       const p = state_.current_puzzle;
       if (!p) return;
@@ -648,6 +643,22 @@
       }
 
       if (!isBatch) log("No blindspots found.");
+    }
+
+    function updateGameListStatus() {
+      const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+
+      Array.from(UI.gameList.options).forEach(opt => {
+        const { gameId, date, whiteName, blackName, wR, bR } = opt.dataset;
+        const record = puzzles.find(p => p.gameId === gameId);
+
+        let emoji = "";
+        if (record) {
+          emoji = record.gain ? "+ " : "- ";
+        }
+
+        opt.text = `${emoji}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
+      });
     }
 
     function convertPvToAlgebraic(fen, pv) {
