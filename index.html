@@ -577,6 +577,7 @@
           }
         });
         UIController.updateTrainingStatus();
+        document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'center' });
       },
 
       runAnalysis: async (isBatch = false, gameIdx = 1, totalGames = 1) => {
