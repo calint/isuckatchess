@@ -218,6 +218,12 @@
       <div
         style="margin-top: 2rem; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
         <h3 style="margin: 0; flex-grow: 1;">Saved Puzzles</h3>
+        <select id="sortPuzzles" style="width: auto; margin: 0; font-size: 0.8rem; padding: 2px 5px;">
+          <option value="rating">Rating (Best to Worst)</option>
+          <option value="severity">Severity (High to Low)</option>
+          <option value="dateDesc" selected>Date (Newest)</option>
+          <option value="dateAsc">Date (Oldest)</option>
+        </select>
         <select id="rankFilter" style="width: auto; margin: 0; font-size: 0.8rem; padding: 2px 5px;">
           <option value="All">All Puzzles</option>
           <option value="Excellent">Excellent Only</option>
@@ -469,35 +475,62 @@
 
       renderSavedPuzzles: () => {
         const filterValue = document.getElementById('rankFilter')?.value || "All";
-        const items = StorageController.getAll().filter(p => {
-          if (p.gain === null) return false; // Skip clean batch records
+        const sortValue = document.getElementById('sortPuzzles')?.value || "dateDesc";
 
+        // Define priority for categorization sorting
+        const ratingOrder = { 'Excellent': 1, 'Good': 2, 'Bad': 3, undefined: 4 };
+
+        // 1. Filter
+        let items = StorageController.getAll().filter(p => {
+          if (p.gain === null) return false;
           if (filterValue === "All") return true;
           if (filterValue === "Unrated") return !p.rating;
           return p.rating === filterValue;
         });
 
-        DOM.display.puzzles.innerHTML = ""; // Header is now outside this div
+        // 2. Sort
+        items.sort((a, b) => {
+          if (sortValue === "rating") {
+            const rankA = ratingOrder[a.rating] || 4;
+            const rankB = ratingOrder[b.rating] || 4;
+            if (rankA !== rankB) return rankA - rankB;
+            // Secondary sort by severity if ratings are equal
+            return (parseInt(b.gain) || 0) - (parseInt(a.gain) || 0);
+          }
+          else if (sortValue === "severity") {
+            return (parseInt(b.gain) || 0) - (parseInt(a.gain) || 0);
+          }
+          else if (sortValue === "dateAsc") {
+            return new Date(a.date) - new Date(b.date);
+          }
+          else {
+            // Default: dateDesc
+            return new Date(b.date) - new Date(a.date);
+          }
+        });
 
-        items.sort((a, b) => a.solved - b.solved).forEach(p => {
+        // 3. Render
+        DOM.display.puzzles.innerHTML = "";
+
+        items.forEach(p => {
           const rankBadge = p.rating ?
-            `<span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px; margin-left:5px;">${p.rating}</span>` : "";
+            `<span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px; margin-left:5px; border: 1px solid #ccc;">${p.rating}</span>` : "";
 
           const div = document.createElement('div');
           div.className = 'puzzle-item';
           div.style.opacity = p.solved ? "0.6" : "1";
 
           div.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div onclick="EventController.loadPuzzleById(${p.id})" style="flex-grow: 1;">
-              <strong>${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
-              <small>${p.gain} | ${p.date} (${p.depth}d)</small>
-            </div>
-            <button onclick="StorageController.delete(${p.id})" 
-                    style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
-              Delete
-            </button>
-          </div>`;
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div onclick="EventController.loadPuzzleById(${p.id})" style="flex-grow: 1;">
+          <strong>${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
+          <small>${p.gain} | ${p.date} (${p.depth}d)</small>
+        </div>
+        <button onclick="StorageController.delete(${p.id})" 
+                style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
+          Delete
+        </button>
+      </div>`;
           DOM.display.puzzles.appendChild(div);
         });
       },
@@ -711,6 +744,7 @@
         DOM.buttons.solution.onclick = EventController.handleShowSolution;
 
         document.getElementById('rankFilter').onchange = UIController.renderSavedPuzzles;
+        document.getElementById('sortPuzzles').onchange = UIController.renderSavedPuzzles;
 
         EventController.handleLoadArchives();
         UIController.renderSavedPuzzles();
