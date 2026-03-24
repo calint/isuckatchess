@@ -6,6 +6,7 @@
   <title>Chess Blindspot Trainer</title>
   <link rel="stylesheet" href="lib/chessboard-1.0.0.min.css">
   <style>
+    /* CSS remains identical */
     :root {
       --primary: #0b4a6f;
       --bg: #f2f4f7;
@@ -71,12 +72,9 @@
       font-size: 0.75rem;
       height: 300px;
       width: 100%;
-      /* Occupy full parent width */
       box-sizing: border-box;
-      /* Include padding in width calculation */
       overflow-y: auto;
       overflow-x: hidden;
-      /* Prevent horizontal scrolling */
       background: #222;
       color: #00ff00;
       padding: 0.8rem;
@@ -84,9 +82,7 @@
       margin-top: 10px;
       line-height: 1.4;
       white-space: pre-wrap;
-      /* Wrap long lines instead of pushing width */
       word-break: break-all;
-      /* Force break very long strings */
     }
 
     .panel {
@@ -96,7 +92,6 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
       height: fit-content;
       min-width: 0;
-      /* Allows the panel to shrink/fit grid correctly */
     }
 
     .puzzle-item {
@@ -166,14 +161,16 @@
         <button id="btnLoad">Fetch Games</button>
         <select id="gameList" size="6"></select>
         <div class="settings-row">
-          <div style="flex: 2;"><label style="font-size: 0.8rem; font-weight: 700;">Lookahead:</label>
+          <div style="flex: 2;">
+            <label style="font-size: 0.8rem; font-weight: 700;">Lookahead:</label>
             <select id="lookahead">
               <option value="5">5 moves</option>
               <option value="8">8 moves</option>
               <option value="12" selected>12 moves</option>
             </select>
           </div>
-          <div style="flex: 1;"><label style="font-size: 0.8rem; font-weight: 700;">Margin (CP):</label>
+          <div style="flex: 1;">
+            <label style="font-size: 0.8rem; font-weight: 700;">Margin (CP):</label>
             <input id="margin" type="number" value="250">
           </div>
         </div>
@@ -219,615 +216,592 @@
   <script src="lib/chess.min.js"></script>
 
   <script>
-    const UI = {
-      player: document.getElementById('player'),
-      year: document.getElementById('year'),
-      month: document.getElementById('month'),
-      gameList: document.getElementById('gameList'),
-      log: document.getElementById('log'),
-      hint: document.getElementById('hint'),
-      evalFill: document.getElementById('eval-fill'),
-      puzzleHeader: document.getElementById('puzzle-header'),
-      phPlayers: document.getElementById('ph-players'),
-      phMeta: document.getElementById('ph-meta'),
-      phEval: document.getElementById('ph-eval'),
-      puzzles: document.getElementById('puzzles'),
-      solutionText: document.getElementById('solutionText'),
-      btnStop: document.getElementById('btnStop'),
-      btnBatch: document.getElementById('btnBatch'),
-      btnSolution: document.getElementById('btnSolution')
+    // ==========================================
+    // 1. STATE & DOM CACHE
+    // ==========================================
+    const State = {
+      engine: null,
+      board: null,
+      currentPuzzle: null,
+      trainingGame: new Chess(),
+      isBatchRunning: false
     };
 
-    const state_ = { engine: null, board: null, current_puzzle: null, training_game: new Chess(), isBatchRunning: false };
-
-    function init() {
-      state_.board = Chessboard('board', { position: 'start', pieceTheme: 'img/chesspieces/wikipedia/{piece}.png' });
-      document.getElementById('btn-hint').onclick = onShowHint;
-      document.getElementById('btnReload').onclick = onLoadArchives;
-      document.getElementById('btnLoad').onclick = onLoadGames;
-      document.getElementById('btnAnalyze').onclick = onAnalyze;
-      document.getElementById('btnBatch').onclick = onBatch;
-      document.getElementById('btnClearLog').onclick = onClearLog;
-      UI.btnStop.onclick = onStop;
-      UI.btnSolution.onclick = onSolution;
-      document.getElementById('btnPrev').onclick = onStepBack;
-      document.getElementById('btnNext').onclick = onStepForward;
-      onLoadArchives();
-      renderSavedPuzzles();
-    }
-
-    function onClearLog() {
-      UI.log.innerHTML = "Ready.";
-    }
-
-    function onAnalyze() {
-      const sel = UI.gameList.selectedOptions[0];
-      if (!sel) return;
-
-      const { gameId } = sel.dataset;
-      const currentDepth = parseInt(UI.lookahead?.value || 12);
-      const currentMargin = parseInt(document.getElementById('margin').value);
-
-      // Check if we already have a puzzle with these exact settings
-      const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      const savedPuzzle = existingPuzzles.find(p =>
-        p.gameId === gameId &&
-        p.depth === currentDepth &&
-        p.margin === currentMargin &&
-        p.gain !== null // Ensure it's a puzzle, not just a "clean" record
-      );
-
-      if (savedPuzzle) {
-        log(`Match found in local storage (Depth ${currentDepth}, Margin ${currentMargin}). Loading...`, true);
-        showPuzzle(savedPuzzle);
-      } else {
-        // No match? Run the actual engine analysis
-        runAnalysis(false);
+    const DOM = {
+      inputs: {
+        player: document.getElementById('player'),
+        year: document.getElementById('year'),
+        month: document.getElementById('month'),
+        lookahead: document.getElementById('lookahead'),
+        margin: document.getElementById('margin'),
+        gameList: document.getElementById('gameList')
+      },
+      buttons: {
+        reload: document.getElementById('btnReload'),
+        load: document.getElementById('btnLoad'),
+        analyze: document.getElementById('btnAnalyze'),
+        batch: document.getElementById('btnBatch'),
+        stop: document.getElementById('btnStop'),
+        clearLog: document.getElementById('btnClearLog'),
+        prev: document.getElementById('btnPrev'),
+        next: document.getElementById('btnNext'),
+        hint: document.getElementById('btn-hint'),
+        solution: document.getElementById('btnSolution')
+      },
+      display: {
+        log: document.getElementById('log'),
+        hint: document.getElementById('hint'),
+        evalFill: document.getElementById('eval-fill'),
+        puzzleHeader: document.getElementById('puzzle-header'),
+        phPlayers: document.getElementById('ph-players'),
+        phMeta: document.getElementById('ph-meta'),
+        phEval: document.getElementById('ph-eval'),
+        puzzles: document.getElementById('puzzles'),
+        solutionText: document.getElementById('solutionText')
       }
-    }
+    };
 
-    function onStop() {
-      state_.isBatchRunning = false;
-      log("Stopping... please wait for current game to finish.");
-    }
+    // ==========================================
+    // 2. STORAGE CONTROLLER
+    // ==========================================
+    const StorageController = {
+      getKey: () => 'chess_puzzles',
 
-    // --- Navigation ---
-    function onStepBack() {
-      state_.training_game.undo(); // Undo engine reply
-      state_.training_game.undo(); // Undo player move
-      updateUI();
-    }
+      getAll: () => JSON.parse(localStorage.getItem(StorageController.getKey()) || '[]'),
 
-    // --- Navigation Fix: Smooth Sliding ---
-    async function onStepForward() {
-      const p = state_.current_puzzle;
-      if (!p) return;
-      const sol = p.solution.split(" ");
-      let cur = state_.training_game.history().length;
+      save: (puzzle) => {
+        const items = StorageController.getAll().filter(x => x.gameId !== puzzle.gameId);
+        items.push(puzzle);
+        localStorage.setItem(StorageController.getKey(), JSON.stringify(items));
+        UIController.renderSavedPuzzles();
+      },
 
-      if (cur < sol.length) {
-        // 1. Play Player Move
-        state_.training_game.move(sol[cur]);
-        state_.board.position(state_.training_game.fen()); // Force slide for player move
-        cur++;
+      delete: (id) => {
+        const items = StorageController.getAll().filter(p => p.id !== id);
+        localStorage.setItem(StorageController.getKey(), JSON.stringify(items));
+        UIController.renderSavedPuzzles();
 
-        // 2. Wait for animation, then play Computer Reply
-        if (cur < sol.length) {
-          await new Promise(r => setTimeout(r, 600)); // Match or exceed board transition speed
-          state_.training_game.move(sol[cur]);
-          updateUI(); // This handles the second slide/jump and status
-        } else {
-          updateUI();
+        if (State.currentPuzzle && State.currentPuzzle.id === id) {
+          State.currentPuzzle = null;
+          State.board.start();
+          DOM.display.hint.textContent = "Select a puzzle...";
+          DOM.display.puzzleHeader.style.display = 'none';
         }
+      },
+
+      markSolved: (id) => {
+        const items = StorageController.getAll();
+        const p = items.find(x => x.id === id);
+        if (p && !p.solved) {
+          p.solved = true;
+          localStorage.setItem(StorageController.getKey(), JSON.stringify(items));
+          UIController.renderSavedPuzzles();
+          UIController.log(`Completed: ${p.players}`, true);
+        }
+      },
+
+      findPuzzle: (gameId, depth, margin) => {
+        // Used for UI loading: Must have an actual blindspot (gain !== null)
+        return StorageController.getAll().find(p =>
+          p.gameId === gameId && p.depth === depth && p.margin === margin && p.gain !== null
+        );
+      },
+
+      findRecord: (gameId, depth, margin) => {
+        // Used for Batch skipping: Finds ANY record, including "clean" games without blindspots
+        return StorageController.getAll().find(p =>
+          p.gameId === gameId && p.depth === depth && p.margin === margin
+        );
       }
-    }
+    };
 
+    // ==========================================
+    // 3. API CONTROLLER
+    // ==========================================
+    const ApiController = {
+      fetchArchives: async (user) => {
+        const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
+        const data = await res.json();
+        return data.archives.map(url => {
+          const p = url.split('/');
+          return { year: p[p.length - 2], month: p[p.length - 1] };
+        }).sort((a, b) => b.year - a.year || b.month - a.month);
+      },
 
-    // --- Data Fetching & Helpers ---
-    async function onLoadArchives() {
-      UI.gameList.innerHTML = "";
-      const user = UI.player.value.trim();
-      if (!user) return;
-      const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
-      const data = await res.json();
-      const archives = data.archives.map(url => {
-        const p = url.split('/');
-        return { year: p[p.length - 2], month: p[p.length - 1] };
-      }).sort((a, b) => b.year - a.year || b.month - a.month);
+      fetchGames: async (user, year, month) => {
+        const res = await fetch(`https://api.chess.com/pub/player/${user}/games/${year}/${month}`);
+        return await res.json();
+      }
+    };
 
-      UI.year.innerHTML = "";
-      [...new Set(archives.map(a => a.year))].forEach(y => UI.year.add(new Option(y, y)));
-      UI.year.onchange = () => {
-        UI.month.innerHTML = "";
-        archives.filter(a => a.year === UI.year.value).forEach(a => UI.month.add(new Option(a.month, a.month)));
-      };
-      UI.year.onchange();
-    }
+    // ==========================================
+    // 4. ENGINE CONTROLLER
+    // ==========================================
+    const EngineController = {
+      getEngine: async () => {
+        if (!State.engine) State.engine = new Worker("lib/stockfish.js");
+        return State.engine;
+      },
 
-    async function onLoadGames() {
-      const res = await fetch(`https://api.chess.com/pub/player/${UI.player.value}/games/${UI.year.value}/${UI.month.value}`);
-      const data = await res.json();
-      UI.gameList.innerHTML = "";
+      evaluate: async (fen, depth) => {
+        const engine = await EngineController.getEngine();
+        const side = fen.split(" ")[1];
 
-      data.games.reverse().forEach((g, i) => {
-        const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
-        const opt = new Option("", i); // Text set by updateGameListStatus
+        return new Promise(resolve => {
+          let lastScore = 0;
+          let lastPv = "";
 
-        Object.assign(opt.dataset, {
-          pgn: g.pgn,
-          gameId: gameId,
-          date: new Date(g.end_time * 1000).toLocaleDateString(),
-          whiteName: g.white.username,
-          blackName: g.black.username,
-          wR: g.white.rating || "?",
-          bR: g.black.rating || "?"
+          const onMsg = (e) => {
+            if (e.data.includes("score")) {
+              const cpMatch = e.data.match(/score cp (-?\d+)/);
+              if (cpMatch) {
+                lastScore = parseInt(cpMatch[1]) * (side === 'b' ? -1 : 1);
+              }
+
+              const mateMatch = e.data.match(/score mate (-?\d+)/);
+              if (mateMatch) {
+                const mateIn = parseInt(mateMatch[1]);
+                const mateValue = (mateIn === 0) ? 100000 : 20000;
+                lastScore = (mateIn >= 0 ? mateValue : -mateValue) * (side === 'b' ? -1 : 1);
+              }
+
+              const pvMatch = e.data.match(/ pv (.+)/);
+              if (pvMatch) lastPv = pvMatch[1];
+            }
+
+            if (e.data.startsWith("bestmove")) {
+              const move = e.data.split(" ")[1];
+              engine.removeEventListener("message", onMsg);
+              resolve({
+                score: lastScore,
+                best: move === "(none)" ? null : move,
+                pv: lastPv
+              });
+            }
+          };
+
+          engine.addEventListener("message", onMsg);
+          engine.postMessage(`position fen ${fen}`);
+          engine.postMessage(`go depth ${depth}`);
         });
-        UI.gameList.add(opt);
-      });
-
-      updateGameListStatus(); // Apply emojis immediately
-    }
-
-    function onShowHint() {
-      const p = state_.current_puzzle;
-      if (!p) return;
-
-      const sol = p.solution.split(" ");
-      const cur = state_.training_game.history().length;
-
-      // If we've reached the end of the solution, don't show a hint
-      if (cur >= sol.length) return;
-
-      const temp = new Chess(state_.training_game.fen());
-      const move = temp.move(sol[cur]);
-
-      if (move) {
-        // Map the single character to the full name
-        const pieceNames = {
-          'p': 'pawn',
-          'n': 'knight',
-          'b': 'bishop',
-          'r': 'rook',
-          'q': 'queen',
-          'k': 'king'
-        };
-
-        const fullName = pieceNames[move.piece] || 'piece';
-        UI.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${fullName}</u> on <strong>${move.from}</strong>`;
       }
-    }
+    };
 
-    async function onSolution() {
-      const sol = state_.current_puzzle.solution.split(" ");
-      state_.training_game.load(state_.current_puzzle.fen);
-      for (const m of sol) {
-        await new Promise(r => setTimeout(r, 500));
-        state_.training_game.move(m);
-        updateUI();
-      }
-    }
+    // ==========================================
+    // 5. UI CONTROLLER
+    // ==========================================
+    const UIController = {
+      log: (msg, isHeader = false) => {
+        const div = document.createElement('div');
+        if (isHeader) div.style.color = '#fff';
+        div.textContent = `> ${msg}`;
+        DOM.display.log.appendChild(div);
+        DOM.display.log.scrollTop = DOM.display.log.scrollHeight;
+      },
 
-    async function onBatch() {
-      const options = Array.from(UI.gameList.options);
-      if (options.length === 0) return;
+      clearLog: () => {
+        DOM.display.log.innerHTML = "Ready.";
+      },
 
-      state_.isBatchRunning = true;
-      toggleAnalysisUI(true);
+      updateEvalBar: (cp) => {
+        const percent = Math.max(0, Math.min(100, 50 + (cp / 40)));
+        DOM.display.evalFill.style.height = percent + "%";
+      },
 
-      log(`Starting batch analysis of ${options.length} games...`, true);
+      toggleAnalysisLock: (isAnalyzing) => {
+        const interactables = [
+          DOM.buttons.analyze, DOM.buttons.batch, DOM.buttons.load, DOM.buttons.reload,
+          DOM.buttons.prev, DOM.buttons.hint, DOM.buttons.next, DOM.buttons.solution,
+          DOM.buttons.clearLog, DOM.inputs.player, DOM.inputs.year, DOM.inputs.month,
+          DOM.inputs.gameList, DOM.inputs.lookahead, DOM.inputs.margin
+        ];
 
-      for (let i = 0; i < options.length; i++) {
-        if (!state_.isBatchRunning) break;
+        interactables.forEach(el => {
+          if (el) el.style.display = isAnalyzing ? 'none' : 'block';
+        });
 
-        // Auto-select the game in the UI list so the user sees progress
-        UI.gameList.selectedIndex = i;
+        document.querySelectorAll('.settings-row label').forEach(lbl => {
+          lbl.style.display = isAnalyzing ? 'none' : 'block';
+        });
 
-        // CRITICAL FIX: Pass the counters (i + 1) and total length
-        await runAnalysis(true, i + 1, options.length);
-      }
+        DOM.buttons.stop.style.display = isAnalyzing ? 'block' : 'none';
+      },
 
-      state_.isBatchRunning = false;
-      toggleAnalysisUI(false);
-      UI.hint.textContent = "Batch complete. Select a puzzle to begin.";
-    }
+      updateGameListStatus: () => {
+        const puzzles = StorageController.getAll();
+        Array.from(DOM.inputs.gameList.options).forEach(opt => {
+          const { gameId, date, whiteName, blackName, wR, bR } = opt.dataset;
+          const record = puzzles.find(p => p.gameId === gameId);
+          const emoji = record ? (record.gain ? "+ " : "- ") : "";
+          opt.text = `${emoji}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
+        });
+      },
 
-    async function updateUI() {
-      const p = state_.current_puzzle;
-      if (!p) return;
+      renderSavedPuzzles: () => {
+        const items = StorageController.getAll().filter(p => p.gain !== null);
+        DOM.display.puzzles.innerHTML = "<h3>Saved Puzzles</h3>";
 
-      const fen = state_.training_game.fen();
-      state_.board.position(fen);
+        items.sort((a, b) => a.solved - b.solved).forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'puzzle-item';
+          div.style.opacity = p.solved ? "0.6" : "1";
 
-      // Get current eval to move the bar
-      const analysis = await evaluate(fen, 10); // Low depth for speed
-      updateEvalBar(analysis.score);
+          // Use global EventController.loadPuzzleById for the click handler
+          div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div onclick="EventController.loadPuzzleById(${p.id})" style="flex-grow: 1;">
+                <strong>${p.players}</strong> ${p.solved ? '✅' : ''}<br>
+                <small>${p.gain} | ${p.date} (${p.depth}d)</small>
+              </div>
+              <button onclick="StorageController.delete(${p.id})" 
+                      style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
+                Del
+              </button>
+            </div>`;
+          DOM.display.puzzles.appendChild(div);
+        });
+      },
 
-      const sol = p.solution.split(" ");
-      const curIdx = state_.training_game.history().length;
-      const totalPlayerMoves = Math.ceil(sol.length / 2);
-      const currentPlayerMove = Math.floor(curIdx / 2) + 1;
+      updateTrainingStatus: async () => {
+        const p = State.currentPuzzle;
+        if (!p) return;
 
-      if (curIdx >= sol.length) {
-        UI.hint.innerHTML = "<span style='color:green; font-weight:bold;'>✔ Puzzle Complete!</span>";
-        markSolved(p.id);
-      } else {
-        UI.hint.innerHTML = `<strong>Your Turn:</strong> Move ${currentPlayerMove} of ${totalPlayerMoves}`;
-      }
-      state_.board.position(state_.training_game.fen());
-    }
+        const fen = State.trainingGame.fen();
+        State.board.position(fen);
 
-    function updateEvalBar(cp) {
-      // 50% is equal. +2000 CP (mate threat/huge lead) is 100%, -2000 CP is 0%
-      const p = Math.max(0, Math.min(100, 50 + (cp / 40)));
-      UI.evalFill.style.height = p + "%";
-    }
+        const analysis = await EngineController.evaluate(fen, 10);
+        UIController.updateEvalBar(analysis.score);
 
-    function toggleAnalysisUI(isAnalyzing) {
-      // Select specific navigation and action buttons
-      const elements = [
-        document.getElementById('btnAnalyze'),
-        document.getElementById('btnBatch'),
-        document.getElementById('btnLoad'),
-        document.getElementById('btnReload'),
-        document.getElementById('btnPrev'),
-        document.getElementById('btn-hint'),
-        document.getElementById('btnNext'),
-        document.getElementById('btnSolution'),
-        UI.player, UI.year, UI.month, UI.gameList,
-        document.getElementById('lookahead'),
-        document.getElementById('margin')
-      ];
+        const sol = p.solution.split(" ");
+        const curIdx = State.trainingGame.history().length;
+        const totalPlayerMoves = Math.ceil(sol.length / 2);
+        const currentPlayerMove = Math.floor(curIdx / 2) + 1;
 
-      // Hide the labels in the settings row
-      const labels = document.querySelectorAll('.settings-row label');
-
-      elements.forEach(el => {
-        if (el) el.style.display = isAnalyzing ? 'none' : 'block';
-      });
-
-      labels.forEach(lbl => {
-        lbl.style.display = isAnalyzing ? 'none' : 'block';
-      });
-
-      // Only show Stop during analysis
-      UI.btnStop.style.display = isAnalyzing ? 'block' : 'none';
-    }
-
-    function markSolved(id) {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      const p = items.find(x => x.id === id);
-      if (p && !p.solved) {
-        p.solved = true;
-        localStorage.setItem('chess_puzzles', JSON.stringify(items));
-        renderSavedPuzzles();
-        log(`Completed: ${p.players}`, true);
-      }
-    }
-
-    function deletePuzzle(id) {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      const filtered = items.filter(p => p.id !== id);
-      localStorage.setItem('chess_puzzles', JSON.stringify(filtered));
-      renderSavedPuzzles();
-
-      // Clear the board if we deleted the currently active puzzle
-      if (state_.current_puzzle && state_.current_puzzle.id === id) {
-        state_.current_puzzle = null;
-        state_.board.start();
-        UI.hint.textContent = "Select a puzzle...";
-        UI.puzzleHeader.style.display = 'none';
-      }
-    }
-
-    // Helper to bridge the click to showPuzzle
-    function loadPuzzleById(id) {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-      const p = items.find(x => x.id === id);
-      if (p) showPuzzle(p);
-    }
-
-    // --- Analysis & Engine ---
-    async function getEngine() {
-      if (state_.engine) return state_.engine;
-      state_.engine = new Worker("lib/stockfish.js");
-      return state_.engine;
-    }
-
-    async function evaluate(fen, depth) {
-      const engine = await getEngine();
-      const side = fen.split(" ")[1];
-
-      return new Promise(resolve => {
-        let lastScore = 0;
-        let lastPv = "";
-
-        const onMsg = (e) => {
-          if (e.data.includes("score")) {
-            const cpMatch = e.data.match(/score cp (-?\d+)/);
-            if (cpMatch) {
-              lastScore = parseInt(cpMatch[1]) * (side === 'b' ? -1 : 1);
-            }
-
-            const mateMatch = e.data.match(/score mate (-?\d+)/);
-            if (mateMatch) {
-              const mateIn = parseInt(mateMatch[1]);
-              // High constant for mate, adjusted for side
-              const mateValue = (mateIn === 0) ? 100000 : 20000;
-              lastScore = (mateIn >= 0 ? mateValue : -mateValue) * (side === 'b' ? -1 : 1);
-            }
-
-            const pvMatch = e.data.match(/ pv (.+)/);
-            if (pvMatch) lastPv = pvMatch[1];
-          }
-
-          // Handle the "Game Over" bestmove
-          if (e.data.startsWith("bestmove")) {
-            const move = e.data.split(" ")[1];
-            engine.removeEventListener("message", onMsg);
-
-            // If move is "(none)", it's checkmate or stalemate
-            resolve({
-              score: lastScore,
-              best: move === "(none)" ? null : move,
-              pv: lastPv
-            });
-          }
-        };
-
-        engine.addEventListener("message", onMsg);
-        engine.postMessage(`position fen ${fen}`);
-        engine.postMessage(`go depth ${depth}`);
-      });
-    }
-
-    // --- Game Logic ---
-    async function showPuzzle(p) {
-      state_.current_puzzle = p;
-      state_.training_game.load(p.fen);
-      UI.puzzleHeader.style.display = 'block';
-      UI.phPlayers.textContent = p.players;
-      UI.phMeta.textContent = `${p.date} | Side: ${p.side.toUpperCase()}`;
-      UI.phEval.textContent = `Improve position by ${p.gain}`;
-      UI.solutionText.style.display = 'none';
-      UI.btnSolution.style.display = 'block';
-
-      const sol = p.solution.split(" ");
-      state_.board = Chessboard('board', {
-        draggable: true, position: p.fen, orientation: p.side, pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
-        onDrop: (s, t) => {
-          const history = state_.training_game.history().length;
-          const move = new Chess(state_.training_game.fen()).move({ from: s, to: t, promotion: 'q' });
-          if (!move || move.san !== sol[history]) return 'snapback';
-
-          state_.training_game.move(move.san);
-
-          const nextIdx = state_.training_game.history().length;
-
-          if (nextIdx < sol.length) {
-            setTimeout(() => {
-              state_.training_game.move(sol[nextIdx]);
-              updateUI();
-            }, 500);
-          } else {
-            updateUI();
-          }
+        if (curIdx >= sol.length) {
+          DOM.display.hint.innerHTML = "<span style='color:green; font-weight:bold;'>✔ Puzzle Complete!</span>";
+          StorageController.markSolved(p.id);
+        } else {
+          DOM.display.hint.innerHTML = `<strong>Your Turn:</strong> Move ${currentPlayerMove} of ${totalPlayerMoves}`;
         }
-      });
-      updateUI();
-    }
+      }
+    };
 
-    function log(msg, isHeader = false) {
-      const div = document.createElement('div');
-      if (isHeader) div.style.color = '#fff';
-      div.textContent = `> ${msg}`;
-      UI.log.appendChild(div);
-      UI.log.scrollTop = UI.log.scrollHeight;
-    }
+    // ==========================================
+    // 6. GAME & LOGIC CONTROLLER
+    // ==========================================
+    const GameLogic = {
+      convertPvToAlgebraic: (fen, pv) => {
+        const temp = new Chess(fen);
+        const san = [];
+        pv.split(" ").forEach(m => {
+          const r = temp.move({ from: m.substring(0, 2), to: m.substring(2, 4), promotion: m[4] || 'q' });
+          if (r) san.push(r.san);
+        });
+        return san.join(" ");
+      },
 
-    async function runAnalysis(isBatch = false, gameIdx = 1, totalGames = 1) {
-      const sel = UI.gameList.selectedOptions[0];
-      if (!sel) return;
+      loadPuzzle: (puzzle) => {
+        State.currentPuzzle = puzzle;
+        State.trainingGame.load(puzzle.fen);
 
-      // Ensure we use the passed counters for display
-      const displayIdx = isBatch ? gameIdx : 1;
-      const displayTotal = isBatch ? totalGames : 1;
+        DOM.display.puzzleHeader.style.display = 'block';
+        DOM.display.phPlayers.textContent = puzzle.players;
+        DOM.display.phMeta.textContent = `${puzzle.date} | Side: ${puzzle.side.toUpperCase()}`;
+        DOM.display.phEval.textContent = `Improve position by ${puzzle.gain}`;
+        DOM.display.solutionText.style.display = 'none';
+        DOM.buttons.solution.style.display = 'block';
 
-      // 1. UI Lockdown & State Setup
-      if (!isBatch) toggleAnalysisUI(true);
-      let newlySavedPuzzleId = null;
+        const sol = puzzle.solution.split(" ");
+        State.board = Chessboard('board', {
+          draggable: true,
+          position: puzzle.fen,
+          orientation: puzzle.side,
+          pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
+          onDrop: (s, t) => {
+            const history = State.trainingGame.history().length;
+            const move = new Chess(State.trainingGame.fen()).move({ from: s, to: t, promotion: 'q' });
 
-      try {
-        const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
-        const currentDepth = parseInt(UI.lookahead?.value || 12);
-        const currentMargin = parseInt(document.getElementById('margin').value);
-        const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
+            if (!move || move.san !== sol[history]) return 'snapback';
 
-        // Header Log
-        log("------------------------------------------", true);
-        log(`ANALYZING [${displayIdx}/${displayTotal}]: ${playerDisplay}`, true);
+            State.trainingGame.move(move.san);
+            const nextIdx = State.trainingGame.history().length;
 
-        // 2. Skip Logic (If settings match saved record)
-        const existingPuzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-        const savedPuzzle = existingPuzzles.find(p => p.gameId === gameId);
+            if (nextIdx < sol.length) {
+              setTimeout(() => {
+                State.trainingGame.move(sol[nextIdx]);
+                UIController.updateTrainingStatus();
+              }, 500);
+            } else {
+              UIController.updateTrainingStatus();
+            }
+          }
+        });
+        UIController.updateTrainingStatus();
+      },
 
-        if (isBatch && savedPuzzle) {
-          if (savedPuzzle.depth === currentDepth && savedPuzzle.margin === currentMargin) {
-            log(`SKIPPING: Settings match existing record.`);
-            updateGameListStatus();
+      runAnalysis: async (isBatch = false, gameIdx = 1, totalGames = 1) => {
+        const sel = DOM.inputs.gameList.selectedOptions[0];
+        if (!sel) return;
+
+        const displayIdx = isBatch ? gameIdx : 1;
+        const displayTotal = isBatch ? totalGames : 1;
+        let newlySavedPuzzleId = null;
+
+        if (!isBatch) UIController.toggleAnalysisLock(true);
+
+        try {
+          const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
+          const currentDepth = parseInt(DOM.inputs.lookahead.value || 12);
+          const currentMargin = parseInt(DOM.inputs.margin.value);
+          const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
+
+          UIController.log("------------------------------------------", true);
+          UIController.log(`ANALYZING [${displayIdx}/${displayTotal}]: ${playerDisplay}`, true);
+
+          const existingRecord = StorageController.findRecord(gameId, currentDepth, currentMargin);
+          if (isBatch && existingRecord) {
+            UIController.log(`SKIPPING: Settings match existing record.`);
+            UIController.updateGameListStatus();
             return;
           }
-        }
 
-        // 3. Game Initialization
-        const game = new Chess();
-        if (!game.load_pgn(pgn)) {
-          log("ERROR: Could not parse PGN.");
-          return;
-        }
-
-        const user = UI.player.value.toLowerCase();
-        const uSide = blackName.toLowerCase() === user ? 'black' : 'white';
-        const history = game.history({ verbose: true });
-        const tracker = new Chess();
-        let moveCount = 0;
-
-        state_.board.orientation(uSide);
-        state_.board.position('start');
-
-        // 4. Analysis Loop
-        for (const move of history) {
-          if (isBatch && !state_.isBatchRunning) return;
-          moveCount++;
-
-          // Update Live Progress in Hint Box
-          const prog = Math.round((moveCount / history.length) * 100);
-          UI.hint.innerHTML = `
-        <div style="font-weight:bold;">Game ${displayIdx} of ${displayTotal}</div>
-        <div style="font-size: 0.85rem;">${playerDisplay}</div>
-        <small>Move ${moveCount}/${history.length} (${prog}%)</small>
-      `;
-
-          // Check if game is already over (prevents engine hang)
-          if (tracker.game_over()) break;
-
-          const fenBefore = tracker.fen();
-          const turn = tracker.turn() === 'w' ? 'white' : 'black';
-
-          // Evaluate position BEFORE the move
-          const analysis = await evaluate(fenBefore, currentDepth);
-
-          // Execute the move in our tracker
-          tracker.move(move);
-          state_.board.position(tracker.fen());
-
-          // Evaluate position AFTER the move
-          let post;
-          if (tracker.in_checkmate()) {
-            // Assign massive score for checkmate to avoid engine deadlock
-            post = { score: (tracker.turn() === 'b' ? 100000 : -100000) };
-          } else if (tracker.in_draw() || tracker.in_stalemate()) {
-            post = { score: 0 };
-          } else {
-            post = await evaluate(tracker.fen(), currentDepth);
+          const game = new Chess();
+          if (!game.load_pgn(pgn)) {
+            UIController.log("ERROR: Could not parse PGN.");
+            return;
           }
 
-          updateEvalBar(post.score);
+          const user = DOM.inputs.player.value.toLowerCase();
+          const uSide = blackName.toLowerCase() === user ? 'black' : 'white';
+          const history = game.history({ verbose: true });
+          const tracker = new Chess();
+          let moveCount = 0;
 
-          // 5. Blindspot Calculation
-          const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
+          State.board.orientation(uSide);
+          State.board.position('start');
 
-          if (turn === uSide && gap >= currentMargin) {
-            log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
+          for (const move of history) {
+            if (isBatch && !State.isBatchRunning) return;
+            moveCount++;
 
-            newlySavedPuzzleId = Date.now();
-            savePuzzle({
-              gameId,
-              fen: fenBefore,
-              side: turn,
-              gain: `${gap} CP`,
-              id: newlySavedPuzzleId,
-              solution: convertPvToAlgebraic(fenBefore, analysis.pv),
-              players: playerDisplay,
-              date,
-              depth: currentDepth,
-              margin: currentMargin
-            });
-            updateGameListStatus();
-            return; // Stop analyzing this game once a blindspot is found
-          }
-        }
+            const prog = Math.round((moveCount / history.length) * 100);
+            DOM.display.hint.innerHTML = `
+              <div style="font-weight:bold;">Game ${displayIdx} of ${displayTotal}</div>
+              <div style="font-size: 0.85rem;">${playerDisplay}</div>
+              <small>Move ${moveCount}/${history.length} (${prog}%)</small>
+            `;
 
-        // 6. Save "Clean" record if no blindspot found
-        savePuzzle({
-          gameId, players: playerDisplay, gain: null,
-          depth: currentDepth, margin: currentMargin, date
-        });
-        log(`COMPLETE: Checked ${moveCount} moves.`, true);
-        updateGameListStatus();
+            if (tracker.game_over()) break;
 
-      } catch (err) {
-        log(`FATAL ERROR: ${err.message}`);
-        console.error(err);
-      } finally {
-        // 7. UI Restoration & Auto-Load
-        if (!isBatch) {
-          toggleAnalysisUI(false);
+            const fenBefore = tracker.fen();
+            const turn = tracker.turn() === 'w' ? 'white' : 'black';
 
-          if (newlySavedPuzzleId) {
-            const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
-            const puzzle = items.find(x => x.id === newlySavedPuzzleId);
-            if (puzzle) {
-              showPuzzle(puzzle);
-              log("Blindspot found! Puzzle loaded for training.", true);
+            const analysis = await EngineController.evaluate(fenBefore, currentDepth);
+
+            tracker.move(move);
+            State.board.position(tracker.fen());
+
+            let post;
+            if (tracker.in_checkmate()) {
+              post = { score: (tracker.turn() === 'b' ? 100000 : -100000) };
+            } else if (tracker.in_draw() || tracker.in_stalemate()) {
+              post = { score: 0 };
+            } else {
+              post = await EngineController.evaluate(tracker.fen(), currentDepth);
             }
-          } else {
-            UI.hint.textContent = "Analysis complete. No blindspot found.";
+
+            UIController.updateEvalBar(post.score);
+            const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
+
+            if (turn === uSide && gap >= currentMargin) {
+              UIController.log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
+              newlySavedPuzzleId = Date.now();
+              StorageController.save({
+                gameId, fen: fenBefore, side: turn, gain: `${gap} CP`,
+                id: newlySavedPuzzleId,
+                solution: GameLogic.convertPvToAlgebraic(fenBefore, analysis.pv),
+                players: playerDisplay, date, depth: currentDepth, margin: currentMargin
+              });
+              UIController.updateGameListStatus();
+              return;
+            }
+          }
+
+          StorageController.save({ gameId, players: playerDisplay, gain: null, depth: currentDepth, margin: currentMargin, date });
+          UIController.log(`COMPLETE: Checked ${moveCount} moves.`, true);
+          UIController.updateGameListStatus();
+
+        } catch (err) {
+          UIController.log(`FATAL ERROR: ${err.message}`);
+          console.error(err);
+        } finally {
+          if (!isBatch) {
+            UIController.toggleAnalysisLock(false);
+            if (newlySavedPuzzleId) {
+              const puzzle = StorageController.getAll().find(x => x.id === newlySavedPuzzleId);
+              if (puzzle) {
+                GameLogic.loadPuzzle(puzzle);
+                UIController.log("Blindspot found! Puzzle loaded for training.", true);
+              }
+            } else {
+              DOM.display.hint.textContent = "Analysis complete. No blindspot found.";
+            }
           }
         }
       }
-    }
+    };
 
-    function renderSavedPuzzles() {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]')
-        .filter(p => p.gain !== null); // Only show actual puzzles
+    // ==========================================
+    // 7. EVENT CONTROLLER
+    // ==========================================
+    const EventController = {
+      init: () => {
+        State.board = Chessboard('board', { position: 'start', pieceTheme: 'img/chesspieces/wikipedia/{piece}.png' });
 
-      UI.puzzles.innerHTML = "<h3>Saved Puzzles</h3>";
+        DOM.buttons.reload.onclick = EventController.handleLoadArchives;
+        DOM.buttons.load.onclick = EventController.handleLoadGames;
+        DOM.buttons.analyze.onclick = EventController.handleAnalyze;
+        DOM.buttons.batch.onclick = EventController.handleBatch;
+        DOM.buttons.stop.onclick = () => { State.isBatchRunning = false; UIController.log("Stopping..."); };
+        DOM.buttons.clearLog.onclick = UIController.clearLog;
+        DOM.buttons.prev.onclick = EventController.handleStepBack;
+        DOM.buttons.next.onclick = EventController.handleStepForward;
+        DOM.buttons.hint.onclick = EventController.handleShowHint;
+        DOM.buttons.solution.onclick = EventController.handleShowSolution;
 
-      items.sort((a, b) => a.solved - b.solved).forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'puzzle-item';
-        div.style.opacity = p.solved ? "0.6" : "1";
+        EventController.handleLoadArchives();
+        UIController.renderSavedPuzzles();
+      },
 
-        div.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div onclick="loadPuzzleById(${p.id})" style="flex-grow: 1;">
-          <strong>${p.players}</strong> ${p.solved ? '✅' : ''}<br>
-          <small>${p.gain} | ${p.date} (${p.depth}d)</small>
-        </div>
-        <button onclick="deletePuzzle(${p.id})" 
-                style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
-          Del
-        </button>
-      </div>`;
-        UI.puzzles.appendChild(div);
-      });
-    }
+      handleLoadArchives: async () => {
+        const user = DOM.inputs.player.value.trim();
+        if (!user) return;
 
-    function updateGameListStatus() {
-      const puzzles = JSON.parse(localStorage.getItem('chess_puzzles') || '[]');
+        const archives = await ApiController.fetchArchives(user);
+        DOM.inputs.year.innerHTML = "";
+        [...new Set(archives.map(a => a.year))].forEach(y => DOM.inputs.year.add(new Option(y, y)));
 
-      Array.from(UI.gameList.options).forEach(opt => {
-        const { gameId, date, whiteName, blackName, wR, bR } = opt.dataset;
-        const record = puzzles.find(p => p.gameId === gameId);
+        DOM.inputs.year.onchange = () => {
+          DOM.inputs.month.innerHTML = "";
+          archives.filter(a => a.year === DOM.inputs.year.value).forEach(a => DOM.inputs.month.add(new Option(a.month, a.month)));
+        };
+        DOM.inputs.year.onchange();
+      },
 
-        let emoji = "";
-        if (record) {
-          emoji = record.gain ? "+ " : "- ";
+      handleLoadGames: async () => {
+        const data = await ApiController.fetchGames(DOM.inputs.player.value, DOM.inputs.year.value, DOM.inputs.month.value);
+        DOM.inputs.gameList.innerHTML = "";
+
+        data.games.reverse().forEach((g, i) => {
+          const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
+          const opt = new Option("", i);
+          Object.assign(opt.dataset, {
+            pgn: g.pgn, gameId,
+            date: new Date(g.end_time * 1000).toLocaleDateString(),
+            whiteName: g.white.username, blackName: g.black.username,
+            wR: g.white.rating || "?", bR: g.black.rating || "?"
+          });
+          DOM.inputs.gameList.add(opt);
+        });
+        UIController.updateGameListStatus();
+      },
+
+      handleAnalyze: () => {
+        const sel = DOM.inputs.gameList.selectedOptions[0];
+        if (!sel) return;
+
+        const currentDepth = parseInt(DOM.inputs.lookahead.value || 12);
+        const currentMargin = parseInt(DOM.inputs.margin.value);
+
+        const savedPuzzle = StorageController.findPuzzle(sel.dataset.gameId, currentDepth, currentMargin);
+
+        if (savedPuzzle) {
+          UIController.log(`Match found in local storage (Depth ${currentDepth}, Margin ${currentMargin}). Loading...`, true);
+          GameLogic.loadPuzzle(savedPuzzle);
+        } else {
+          GameLogic.runAnalysis(false);
+        }
+      },
+
+      handleBatch: async () => {
+        const options = Array.from(DOM.inputs.gameList.options);
+        if (options.length === 0) return;
+
+        State.isBatchRunning = true;
+        UIController.toggleAnalysisLock(true);
+        UIController.log(`Starting batch analysis of ${options.length} games...`, true);
+
+        for (let i = 0; i < options.length; i++) {
+          if (!State.isBatchRunning) break;
+          DOM.inputs.gameList.selectedIndex = i;
+          await GameLogic.runAnalysis(true, i + 1, options.length);
         }
 
-        opt.text = `${emoji}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
-      });
-    }
+        State.isBatchRunning = false;
+        UIController.toggleAnalysisLock(false);
+        DOM.display.hint.textContent = "Batch complete. Select a puzzle to begin.";
+      },
 
-    function convertPvToAlgebraic(fen, pv) {
-      const temp = new Chess(fen);
-      const san = [];
-      pv.split(" ").forEach(m => {
-        const r = temp.move({ from: m.substring(0, 2), to: m.substring(2, 4), promotion: m[4] || 'q' });
-        if (r) san.push(r.san);
-      });
-      return san.join(" ");
-    }
+      handleStepBack: () => {
+        State.trainingGame.undo();
+        State.trainingGame.undo();
+        UIController.updateTrainingStatus();
+      },
 
-    function savePuzzle(p) {
-      const items = JSON.parse(localStorage.getItem('chess_puzzles') || '[]').filter(x => x.gameId !== p.gameId);
-      items.push(p);
-      localStorage.setItem('chess_puzzles', JSON.stringify(items));
-      renderSavedPuzzles();
-    }
+      handleStepForward: async () => {
+        const p = State.currentPuzzle;
+        if (!p) return;
+        const sol = p.solution.split(" ");
+        let cur = State.trainingGame.history().length;
 
+        if (cur < sol.length) {
+          State.trainingGame.move(sol[cur]);
+          State.board.position(State.trainingGame.fen());
+          cur++;
 
-    window.onload = init;
+          if (cur < sol.length) {
+            await new Promise(r => setTimeout(r, 600));
+            State.trainingGame.move(sol[cur]);
+          }
+          UIController.updateTrainingStatus();
+        }
+      },
+
+      handleShowHint: () => {
+        const p = State.currentPuzzle;
+        if (!p) return;
+
+        const sol = p.solution.split(" ");
+        const cur = State.trainingGame.history().length;
+        if (cur >= sol.length) return;
+
+        const temp = new Chess(State.trainingGame.fen());
+        const move = temp.move(sol[cur]);
+
+        if (move) {
+          const pieceNames = { 'p': 'pawn', 'n': 'knight', 'b': 'bishop', 'r': 'rook', 'q': 'queen', 'k': 'king' };
+          DOM.display.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${pieceNames[move.piece] || 'piece'}</u> on <strong>${move.from}</strong>`;
+        }
+      },
+
+      handleShowSolution: async () => {
+        const sol = State.currentPuzzle.solution.split(" ");
+        State.trainingGame.load(State.currentPuzzle.fen);
+        for (const m of sol) {
+          await new Promise(r => setTimeout(r, 500));
+          State.trainingGame.move(m);
+          UIController.updateTrainingStatus();
+        }
+      },
+
+      loadPuzzleById: (id) => {
+        const p = StorageController.getAll().find(x => x.id === id);
+        if (p) GameLogic.loadPuzzle(p);
+      }
+    };
+
+    // Bootstrap App
+    window.onload = EventController.init;
   </script>
 </body>
 
