@@ -207,6 +207,7 @@
         <div id="board"></div>
       </div>
       <div style="display: flex; gap: 10px;">
+        <button id="btnCopyFen" style="flex: 1; background: #455a64;">Copy FEN</button>
         <button id="btnPrev">Step Back</button>
         <button id="btn-hint">Get Hint</button>
         <button id="btnNext">Step Forward</button>
@@ -271,7 +272,8 @@
         prev: document.getElementById('btnPrev'),
         next: document.getElementById('btnNext'),
         hint: document.getElementById('btn-hint'),
-        solution: document.getElementById('btnSolution')
+        solution: document.getElementById('btnSolution'),
+        copyFen: document.getElementById('btnCopyFen')
       },
       display: {
         log: document.getElementById('log'),
@@ -750,6 +752,7 @@
         DOM.buttons.next.onclick = EventController.handleStepForward;
         DOM.buttons.hint.onclick = EventController.handleShowHint;
         DOM.buttons.solution.onclick = EventController.handleShowSolution;
+        DOM.buttons.copyFen.onclick = EventController.handleCopyFen;
 
         document.getElementById('rankFilter').onchange = UIController.renderSavedPuzzles;
         document.getElementById('sortPuzzles').onchange = UIController.renderSavedPuzzles;
@@ -890,6 +893,20 @@
           // Optional: Update the local state so the UI badge refreshes
           State.currentPuzzle.rating = rating;
         }
+      },
+
+      handleCopyFen: () => {
+        const fen = State.trainingGame.fen();
+        navigator.clipboard.writeText(fen).then(() => {
+          const originalText = DOM.buttons.copyFen.textContent;
+          DOM.buttons.copyFen.textContent = "Copied!";
+          DOM.buttons.copyFen.style.background = "#2e7d32";
+
+          setTimeout(() => {
+            DOM.buttons.copyFen.textContent = originalText;
+            DOM.buttons.copyFen.style.background = "#1976d2";
+          }, 2000);
+        });
       }
     };
 
