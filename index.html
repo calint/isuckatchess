@@ -539,6 +539,12 @@
         const p = State.currentPuzzle;
         if (!p) return;
 
+        if (State.trainingGame.game_over()) {
+          DOM.display.hint.innerHTML = "<span style='color:green; font-weight:bold;'>✔ Puzzle Complete!</span>";
+          StorageController.markSolved(p.id);
+          return;
+        }
+
         const fen = State.trainingGame.fen();
         State.board.position(fen);
 
@@ -549,7 +555,6 @@
         const curIdx = State.trainingGame.history().length;
         const totalPlayerMoves = Math.ceil(sol.length / 2);
         const currentPlayerMove = Math.floor(curIdx / 2) + 1;
-
         if (curIdx >= sol.length) {
           DOM.display.hint.innerHTML = "<span style='color:green; font-weight:bold;'>✔ Puzzle Complete!</span>";
           StorageController.markSolved(p.id);
@@ -599,14 +604,17 @@
             State.trainingGame.move(move.san);
             const nextIdx = State.trainingGame.history().length;
 
-            if (nextIdx < sol.length) {
-              setTimeout(() => {
-                State.trainingGame.move(sol[nextIdx]);
-                UIController.updateTrainingStatus();
-              }, 500);
-            } else {
+            // If the player's move ends the game (e.g. checkmate), finish immediately
+            if (State.trainingGame.game_over() || nextIdx >= sol.length) {
               UIController.updateTrainingStatus();
+              return;
             }
+
+            // Otherwise, let the opponent move
+            setTimeout(() => {
+              State.trainingGame.move(sol[nextIdx]);
+              UIController.updateTrainingStatus();
+            }, 500);
           }
         });
         UIController.updateTrainingStatus();
