@@ -190,6 +190,14 @@
         <div id="ph-players" style="font-weight: bold; font-size: 1.1rem;"></div>
         <div id="ph-meta" style="color: #aaa; font-size: 0.8rem;"></div>
         <div id="ph-eval" style="color: #ffca28; font-weight: bold;"></div>
+        <div style="margin-top: 10px; display: flex; gap: 5px;">
+          <button onclick="EventController.handleRank('Excellent')"
+            style="background:#2e7d32; font-size: 0.7rem; padding: 4px;">Excellent</button>
+          <button onclick="EventController.handleRank('Good')"
+            style="background:#1565c0; font-size: 0.7rem; padding: 4px;">Good</button>
+          <button onclick="EventController.handleRank('Bad')"
+            style="background:#c62828; font-size: 0.7rem; padding: 4px;">Bad</button>
+        </div>
       </div>
       <div id="hint" style="background: #fff9c4; padding: 0.5rem; border-radius: 4px;">Select a puzzle...</div>
       <div class="board-container">
@@ -207,7 +215,18 @@
       <div id="solutionText"
         style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 8px; display: none; border: 1px solid #0b4a6f;">
       </div>
-      <div id="puzzles" style="margin-top: 2rem;"></div>
+      <div
+        style="margin-top: 2rem; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+        <h3 style="margin: 0; flex-grow: 1;">Saved Puzzles</h3>
+        <select id="rankFilter" style="width: auto; margin: 0; font-size: 0.8rem; padding: 2px 5px;">
+          <option value="All">All Puzzles</option>
+          <option value="Excellent">Excellent Only</option>
+          <option value="Good">Good Only</option>
+          <option value="Bad">Bad Only</option>
+          <option value="Unrated">Unrated Only</option>
+        </select>
+      </div>
+      <div id="puzzles"></div>
     </section>
   </main>
 
@@ -312,6 +331,17 @@
         return StorageController.getAll().find(p =>
           p.gameId === gameId && p.depth === depth && p.margin === margin
         );
+      },
+
+      rank: (id, rating) => {
+        const items = StorageController.getAll();
+        const p = items.find(x => x.id === id);
+        if (p) {
+          p.rating = rating;
+          localStorage.setItem(StorageController.getKey(), JSON.stringify(items));
+          UIController.renderSavedPuzzles();
+          UIController.log(`Ranked puzzle as: ${rating}`);
+        }
       }
     };
 
@@ -438,26 +468,36 @@
       },
 
       renderSavedPuzzles: () => {
-        const items = StorageController.getAll().filter(p => p.gain !== null);
-        DOM.display.puzzles.innerHTML = "<h3>Saved Puzzles</h3>";
+        const filterValue = document.getElementById('rankFilter')?.value || "All";
+        const items = StorageController.getAll().filter(p => {
+          if (p.gain === null) return false; // Skip clean batch records
+
+          if (filterValue === "All") return true;
+          if (filterValue === "Unrated") return !p.rating;
+          return p.rating === filterValue;
+        });
+
+        DOM.display.puzzles.innerHTML = ""; // Header is now outside this div
 
         items.sort((a, b) => a.solved - b.solved).forEach(p => {
+          const rankBadge = p.rating ?
+            `<span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px; margin-left:5px;">${p.rating}</span>` : "";
+
           const div = document.createElement('div');
           div.className = 'puzzle-item';
           div.style.opacity = p.solved ? "0.6" : "1";
 
-          // Use global EventController.loadPuzzleById for the click handler
           div.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div onclick="EventController.loadPuzzleById(${p.id})" style="flex-grow: 1;">
-                <strong>${p.players}</strong> ${p.solved ? '✅' : ''}<br>
-                <small>${p.gain} | ${p.date} (${p.depth}d)</small>
-              </div>
-              <button onclick="StorageController.delete(${p.id})" 
-                      style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
-                Del
-              </button>
-            </div>`;
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div onclick="EventController.loadPuzzleById(${p.id})" style="flex-grow: 1;">
+              <strong>${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
+              <small>${p.gain} | ${p.date} (${p.depth}d)</small>
+            </div>
+            <button onclick="StorageController.delete(${p.id})" 
+                    style="width:auto; padding: 4px 10px; background:#c62828; margin-left: 10px;">
+              Del
+            </button>
+          </div>`;
           DOM.display.puzzles.appendChild(div);
         });
       },
@@ -669,6 +709,8 @@
         DOM.buttons.hint.onclick = EventController.handleShowHint;
         DOM.buttons.solution.onclick = EventController.handleShowSolution;
 
+        document.getElementById('rankFilter').onchange = UIController.renderSavedPuzzles;
+
         EventController.handleLoadArchives();
         UIController.renderSavedPuzzles();
       },
@@ -797,6 +839,14 @@
       loadPuzzleById: (id) => {
         const p = StorageController.getAll().find(x => x.id === id);
         if (p) GameLogic.loadPuzzle(p);
+      },
+
+      handleRank: (rating) => {
+        if (State.currentPuzzle) {
+          StorageController.rank(State.currentPuzzle.id, rating);
+          // Optional: Update the local state so the UI badge refreshes
+          State.currentPuzzle.rating = rating;
+        }
       }
     };
 
