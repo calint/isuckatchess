@@ -206,15 +206,14 @@
         </div>
         <div id="board"></div>
       </div>
-      <div style="display: flex; gap: 10px;">
-        <button id="btnCopyFen" style="flex: 1; background: #455a64;">Copy FEN</button>
-        <button id="btnPrev">Step Back</button>
-        <button id="btn-hint">Get Hint</button>
-        <button id="btnNext">Step Forward</button>
-      </div>
-      <button id="btnSolution" style="display:none; margin-top: 10px;">Show Solution</button>
-      <div id="solutionText"
-        style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 8px; display: none; border: 1px solid #0b4a6f;">
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <button id="btnCopyFen" style="flex: 1; background: #455a64; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Copy
+          FEN</button>
+        <button id="btnPrev" style="flex: 1; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Back</button>
+        <button id="btn-hint" style="flex: 1; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Hint</button>
+        <button id="btnNext" style="flex: 1; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Forward</button>
+        <button id="btnSolution"
+          style="flex: 1; background: #f57c00; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Solution</button>
       </div>
       <div
         style="margin-top: 2rem; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
@@ -284,7 +283,6 @@
         phMeta: document.getElementById('ph-meta'),
         phEval: document.getElementById('ph-eval'),
         puzzles: document.getElementById('puzzles'),
-        solutionText: document.getElementById('solutionText')
       }
     };
 
@@ -588,7 +586,6 @@
         DOM.display.phPlayers.textContent = puzzle.players;
         DOM.display.phMeta.textContent = `${puzzle.date} | Side: ${puzzle.side.toUpperCase()}`;
         DOM.display.phEval.textContent = `Improve position by ${puzzle.gain}`;
-        DOM.display.solutionText.style.display = 'none';
         DOM.buttons.solution.style.display = 'block';
 
         const sol = puzzle.solution.split(" ");
