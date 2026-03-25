@@ -191,12 +191,16 @@
         <div id="ph-meta" style="color: #aaa; font-size: 0.8rem;"></div>
         <div id="ph-eval" style="color: #ffca28; font-weight: bold;"></div>
         <div style="margin-top: 10px; display: flex; gap: 5px;">
-          <button onclick="EventController.handleRank('Excellent')"
-            style="background:#2e7d32; font-size: 0.7rem; padding: 4px;">Excellent</button>
-          <button onclick="EventController.handleRank('Good')"
-            style="background:#1565c0; font-size: 0.7rem; padding: 4px;">Good</button>
-          <button onclick="EventController.handleRank('Bad')"
-            style="background:#c62828; font-size: 0.7rem; padding: 4px;">Bad</button>
+          <button onclick="EventController.handleRank('1')"
+            style="background:#2e7d32; font-size: 0.8rem; padding: 4px;">1</button>
+          <button onclick="EventController.handleRank('2')"
+            style="background:#1565c0; font-size: 0.8rem; padding: 4px;">2</button>
+          <button onclick="EventController.handleRank('3')"
+            style="background:#ef6c00; font-size: 0.8rem; padding: 4px;">3</button>
+          <button onclick="EventController.handleRank('4')"
+            style="background:#d84315; font-size: 0.8rem; padding: 4px;">4</button>
+          <button onclick="EventController.handleRank('5')"
+            style="background:#c62828; font-size: 0.8rem; padding: 4px;">5</button>
         </div>
       </div>
       <div id="hint" style="background: #fff9c4; padding: 0.5rem; border-radius: 4px;">Select a puzzle...</div>
@@ -226,9 +230,11 @@
         </select>
         <select id="rankFilter" style="width: auto; margin: 0; font-size: 0.8rem; padding: 2px 5px;">
           <option value="All">All Puzzles</option>
-          <option value="Excellent">Excellent Only</option>
-          <option value="Good">Good Only</option>
-          <option value="Bad">Bad Only</option>
+          <option value="1">Category 1</option>
+          <option value="2">Category 2</option>
+          <option value="3">Category 3</option>
+          <option value="4">Category 4</option>
+          <option value="5">Category 5</option>
           <option value="Unrated">Unrated Only</option>
         </select>
       </div>
@@ -477,8 +483,8 @@
         const filterValue = document.getElementById('rankFilter')?.value || "All";
         const sortValue = document.getElementById('sortPuzzles')?.value || "dateDesc";
 
-        // Define priority for categorization sorting
-        const ratingOrder = { 'Excellent': 1, 'Good': 2, 'Bad': 3, undefined: 4 };
+        // Use numbers for priority (1 is highest, undefined/unrated is lowest)
+        const ratingOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, undefined: 6 };
 
         // 1. Filter
         let items = StorageController.getAll().filter(p => {
@@ -491,13 +497,11 @@
         // 2. Sort
         items.sort((a, b) => {
           if (sortValue === "rating") {
-            const rankA = ratingOrder[a.rating] || 4;
-            const rankB = ratingOrder[b.rating] || 4;
+            const rankA = ratingOrder[a.rating] || 6;
+            const rankB = ratingOrder[b.rating] || 6;
             if (rankA !== rankB) return rankA - rankB;
-            // Secondary sort by severity if ratings are equal
             return (parseInt(b.gain) || 0) - (parseInt(a.gain) || 0);
-          }
-          else if (sortValue === "severity") {
+          } else if (sortValue === "severity") {
             return (parseInt(b.gain) || 0) - (parseInt(a.gain) || 0);
           }
           else if (sortValue === "dateAsc") {
@@ -870,12 +874,32 @@
       },
 
       handleShowSolution: async () => {
-        const sol = State.currentPuzzle.solution.split(" ");
-        State.trainingGame.load(State.currentPuzzle.fen);
+        const p = State.currentPuzzle;
+        if (!p) return;
+
+        const sol = p.solution.split(" ");
+
+        // 1. Force logic and visual board back to the beginning immediately
+        State.trainingGame.load(p.fen);
+        State.board.position(p.fen, false); // 'false' disables animation for the snap-back
+
+        // 2. Small delay to ensure the DOM has updated before starting the loop
+        await new Promise(r => setTimeout(r, 100));
+
         for (const m of sol) {
-          await new Promise(r => setTimeout(r, 500));
-          State.trainingGame.move(m);
-          UIController.updateTrainingStatus();
+          // 3. Ensure we don't proceed if the user switched puzzles mid-loop
+          if (State.currentPuzzle.id !== p.id) break;
+
+          // 4. Move logic
+          const move = State.trainingGame.move(m);
+          if (move) {
+            // 5. Update visual board and status
+            State.board.position(State.trainingGame.fen());
+            UIController.updateTrainingStatus();
+          }
+
+          // 6. Wait for the next move
+          await new Promise(r => setTimeout(r, 600));
         }
       },
 
