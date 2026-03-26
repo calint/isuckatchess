@@ -910,7 +910,9 @@
         const p = State.currentPuzzle;
         if (!p) return;
 
+        // stop ongoing animation
         const animationId = ++State.currentAnimationId;
+
         const sol = p.solution.split(" ");
 
         // 1. Force logic and visual board back to the beginning immediately
@@ -923,6 +925,8 @@
         for (const m of sol) {
           // 3. Ensure we don't proceed if the user switched puzzles mid-loop
           if (State.currentPuzzle.id !== p.id) break;
+
+          // or pressed "reset"
           if (animationId !== State.currentAnimationId) return;
 
           // 4. Move logic
