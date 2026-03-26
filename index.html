@@ -599,6 +599,7 @@
       },
 
       loadPuzzle: (puzzle) => {
+        State.currentAnimationId++;
         State.currentPuzzle = puzzle;
         State.trainingGame.load(puzzle.fen);
 
@@ -918,7 +919,7 @@
           const move = State.trainingGame.move(m);
           if (move) {
             State.board.position(State.trainingGame.fen());
-            UIController.updateTrainingStatus();
+            await UIController.updateTrainingStatus();
           }
           await new Promise(r => setTimeout(r, 1000));
         }
@@ -945,7 +946,7 @@
 
           setTimeout(() => {
             DOM.buttons.copyFen.textContent = originalText;
-            DOM.buttons.copyFen.style.background = "#1976d2";
+            DOM.buttons.copyFen.style.background = "#455a64";
           }, 2000);
         });
       }
