@@ -895,50 +895,32 @@
         if (!p) return;
 
         State.currentAnimationId++;
-
-        // Reset the logic state to the puzzle's starting FEN
         State.trainingGame.load(p.fen);
-
-        // Snap the board back instantly
         State.board.position(p.fen, false);
-
         UIController.updateTrainingStatus();
-        UIController.log("Puzzle reset to start.");
       },
 
       handleShowSolution: async () => {
         const p = State.currentPuzzle;
         if (!p) return;
 
-        // stop ongoing animation
         const animationId = ++State.currentAnimationId;
-
         const sol = p.solution.split(" ");
-
-        // 1. Force logic and visual board back to the beginning immediately
         State.trainingGame.load(p.fen);
         State.board.position(p.fen, false); // 'false' disables animation for the snap-back
 
-        // 2. Small delay to ensure the DOM has updated before starting the loop
+        // delay to ensure the DOM has updated before starting the loop
         await new Promise(r => setTimeout(r, 100));
-
         for (const m of sol) {
-          // 3. Ensure we don't proceed if the user switched puzzles mid-loop
           if (State.currentPuzzle.id !== p.id) break;
-
-          // or pressed "reset"
           if (animationId !== State.currentAnimationId) return;
 
-          // 4. Move logic
           const move = State.trainingGame.move(m);
           if (move) {
-            // 5. Update visual board and status
             State.board.position(State.trainingGame.fen());
             UIController.updateTrainingStatus();
           }
-
-          // 6. Wait for the next move
-          await new Promise(r => setTimeout(r, 600));
+          await new Promise(r => setTimeout(r, 1000));
         }
       },
 
@@ -950,7 +932,6 @@
       handleRank: (rating) => {
         if (State.currentPuzzle) {
           StorageController.rank(State.currentPuzzle.id, rating);
-          // Optional: Update the local state so the UI badge refreshes
           State.currentPuzzle.rating = rating;
         }
       },
@@ -970,7 +951,6 @@
       }
     };
 
-    // Bootstrap App
     window.onload = EventController.init;
   </script>
 </body>
