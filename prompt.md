@@ -30,4 +30,20 @@ gain 3.2" then display the board.
 A button or link named "solution" with the moves that gets that evaluation
 should be displayed when clicked.
 
+## pitch
+improving chess for non expert players is mainly
+  improving tactical vision
+         by
+  solving chess puzzles
+         and
+       playing ... slow games
+          thus
+    free chess trainer helps you
+      spot missed tactical opportunity
+          in your own games
 
+       get better
+  in an easy entertaining way
+
+    apply in your regular chess games
+         upgrade your rating
