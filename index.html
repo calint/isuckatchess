@@ -216,6 +216,8 @@
         <button id="btnPrev" style="flex: 1; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Back</button>
         <button id="btnNext" style="flex: 1; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Forward</button>
         <button id="btn-hint" style="flex: 1; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Hint</button>
+        <button id="btnReset"
+          style="flex: 1; background: #607d8b; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Reset</button>
         <button id="btnSolution"
           style="flex: 1; background: #f57c00; font-size: 0.75rem; padding: 0.6rem 0.2rem;">Solution</button>
         <div style="margin-top: 10px; display: flex; gap: 5px;">
@@ -267,7 +269,8 @@
       board: null,
       currentPuzzle: null,
       trainingGame: new Chess(),
-      isBatchRunning: false
+      isBatchRunning: false,
+      currentAnimationId: 0
     };
 
     const DOM = {
@@ -289,6 +292,7 @@
         prev: document.getElementById('btnPrev'),
         next: document.getElementById('btnNext'),
         hint: document.getElementById('btn-hint'),
+        reset: document.getElementById('btnReset'),
         solution: document.getElementById('btnSolution'),
         copyFen: document.getElementById('btnCopyFen')
       },
@@ -764,6 +768,7 @@
         DOM.buttons.prev.onclick = EventController.handleStepBack;
         DOM.buttons.next.onclick = EventController.handleStepForward;
         DOM.buttons.hint.onclick = EventController.handleShowHint;
+        DOM.buttons.reset.onclick = EventController.handleResetPuzzle;
         DOM.buttons.solution.onclick = EventController.handleShowSolution;
         DOM.buttons.copyFen.onclick = EventController.handleCopyFen;
 
@@ -885,10 +890,27 @@
         }
       },
 
+      handleResetPuzzle: () => {
+        const p = State.currentPuzzle;
+        if (!p) return;
+
+        State.currentAnimationId++;
+
+        // Reset the logic state to the puzzle's starting FEN
+        State.trainingGame.load(p.fen);
+
+        // Snap the board back instantly
+        State.board.position(p.fen, false);
+
+        UIController.updateTrainingStatus();
+        UIController.log("Puzzle reset to start.");
+      },
+
       handleShowSolution: async () => {
         const p = State.currentPuzzle;
         if (!p) return;
 
+        const animationId = ++State.currentAnimationId;
         const sol = p.solution.split(" ");
 
         // 1. Force logic and visual board back to the beginning immediately
@@ -901,6 +923,7 @@
         for (const m of sol) {
           // 3. Ensure we don't proceed if the user switched puzzles mid-loop
           if (State.currentPuzzle.id !== p.id) break;
+          if (animationId !== State.currentAnimationId) return;
 
           // 4. Move logic
           const move = State.trainingGame.move(m);
