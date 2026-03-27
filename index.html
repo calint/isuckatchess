@@ -737,14 +737,10 @@
             if (turn === uSide && (isBlunder || isOpportunity)) {
               const puzzleId = Date.now() + moveCount;
 
-              // FIX: If there is a gap >= margin, and it was the user's turn, 
-              // we want to show the punishment (BLINDSPOT) unless the user 
-              // simply missed a win but stayed winning (OPPORTUNITY).
               const reason = (isBlunder && playerEvalAfter < currentMargin) ? "BLINDSPOT" : "OPPORTUNITY";
 
               UIController.log(`✨ Generated ${reason}: Move ${moveCount} (${gap} CP)`);
 
-              // Blindspots start AFTER the move. Opportunities start BEFORE.
               const startFen = (reason === "BLINDSPOT") ? tracker.fen() : fenBefore;
               const startSol = (reason === "BLINDSPOT") ? post.pv : analysis.pv;
 
