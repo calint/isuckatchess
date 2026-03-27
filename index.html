@@ -317,10 +317,25 @@
       getAll: () => JSON.parse(localStorage.getItem(StorageController.getKey()) || '[]'),
 
       save: (puzzle) => {
-        const items = StorageController.getAll().filter(x => x.gameId !== puzzle.gameId);
+        // Change: Filter by unique id instead of gameId to prevent overwriting
+        const items = StorageController.getAll().filter(x => x.id !== puzzle.id);
         items.push(puzzle);
         localStorage.setItem(StorageController.getKey(), JSON.stringify(items));
         UIController.renderSavedPuzzles();
+      },
+
+      findPuzzle: (gameId, depth, margin) => {
+        // Change: Ensure we only return an actual puzzle, not a completion record
+        return StorageController.getAll().find(p =>
+          p.gameId === gameId && p.depth === depth && p.margin === margin && p.gain !== null && !p.isCompletionRecord
+        );
+      },
+
+      findRecord: (gameId, depth, margin) => {
+        //[cite: 3] Change: Look for the specific completion record
+        return StorageController.getAll().find(p =>
+          p.gameId === gameId && p.depth === depth && p.margin === margin && p.isCompletionRecord === true
+        );
       },
 
       delete: (id) => {
@@ -345,20 +360,6 @@
           UIController.renderSavedPuzzles();
           UIController.log(`Completed: ${p.players}`, true);
         }
-      },
-
-      findPuzzle: (gameId, depth, margin) => {
-        // Used for UI loading: Must have an actual blindspot (gain !== null)
-        return StorageController.getAll().find(p =>
-          p.gameId === gameId && p.depth === depth && p.margin === margin && p.gain !== null
-        );
-      },
-
-      findRecord: (gameId, depth, margin) => {
-        // Used for Batch skipping: Finds ANY record, including "clean" games without blindspots
-        return StorageController.getAll().find(p =>
-          p.gameId === gameId && p.depth === depth && p.margin === margin
-        );
       },
 
       rank: (id, rating) => {
@@ -498,13 +499,13 @@
       renderSavedPuzzles: () => {
         const filterValue = document.getElementById('rankFilter')?.value || "All";
         const sortValue = document.getElementById('sortPuzzles')?.value || "dateDesc";
-
-        // Use numbers for priority (1 is highest, undefined/unrated is lowest)
         const ratingOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, undefined: 6 };
 
-        // 1. Filter
         let items = StorageController.getAll().filter(p => {
+          //[cite: 3] Change: Hide records that are just markers for finished analysis
+          if (p.isCompletionRecord) return false;
           if (p.gain === null) return false;
+
           if (filterValue === "All") return true;
           if (filterValue === "Unrated") return !p.rating;
           return p.rating === filterValue;
@@ -605,32 +606,43 @@
 
         DOM.display.puzzleHeader.style.display = 'block';
         DOM.display.phPlayers.textContent = puzzle.players;
-        DOM.display.phMeta.textContent = `${puzzle.date} | Side: ${puzzle.side.toUpperCase()}`;
-        DOM.display.phEval.textContent = `Improve position by ${puzzle.gain}`;
-        DOM.buttons.solution.style.display = 'block';
+        DOM.display.phMeta.textContent = `${puzzle.date} | Perspective: ${puzzle.side.toUpperCase()}`;
+
+        const isBlindspot = (puzzle.reason === "BLINDSPOT");
+        const gainValue = puzzle.gain.replace(' CP', '');
+
+        if (isBlindspot) {
+          // Prompt user to find the opponent's punishment
+          DOM.display.hint.innerHTML = `<span style="color: #c62828; font-weight: bold;">Mistake detected! Find the opponent's best response for ${gainValue} CP.</span>`;
+          DOM.display.phEval.textContent = `You blundered. Show opponent move!`;
+        } else {
+          DOM.display.hint.textContent = `Find the best move for ${puzzle.side} (+${gainValue} CP)`;
+          DOM.display.phEval.textContent = `Improve position by ${puzzle.gain}`;
+        }
 
         const sol = puzzle.solution.split(" ");
         State.board = Chessboard('board', {
           draggable: true,
           position: puzzle.fen,
+          // Keep the board from the USER's original side
           orientation: puzzle.side,
           pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
           onDrop: (s, t) => {
             const history = State.trainingGame.history().length;
             const move = new Chess(State.trainingGame.fen()).move({ from: s, to: t, promotion: 'q' });
 
+            // If move doesn't match the engine's "punishment" move
             if (!move || move.san !== sol[history]) return 'snapback';
 
             State.trainingGame.move(move.san);
             const nextIdx = State.trainingGame.history().length;
 
-            // If the player's move ends the game (e.g. checkmate), finish immediately
             if (State.trainingGame.game_over() || nextIdx >= sol.length) {
               UIController.updateTrainingStatus();
               return;
             }
 
-            // Otherwise, let the opponent move
+            // After you find the opponent's move, the "player" moves automatically
             setTimeout(() => {
               State.trainingGame.move(sol[nextIdx]);
               UIController.updateTrainingStatus();
@@ -705,33 +717,67 @@
 
             let post;
             if (tracker.in_checkmate()) {
-              post = { score: (tracker.turn() === 'b' ? 100000 : -100000) };
+              post = { score: (tracker.turn() === 'b' ? 100000 : -100000), pv: "" };
             } else if (tracker.in_draw() || tracker.in_stalemate()) {
-              post = { score: 0 };
+              post = { score: 0, pv: "" };
             } else {
               post = await EngineController.evaluate(tracker.fen(), currentDepth);
             }
 
             UIController.updateEvalBar(post.score);
+            // Calculate the gap and evaluations
             const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
+            const playerEvalBefore = (turn === 'white' ? 1 : -1) * analysis.score;
+            const playerEvalAfter = (turn === 'white' ? 1 : -1) * post.score;
 
-            if (turn === uSide && gap >= currentMargin) {
-              UIController.log(`[!] BLINDSPOT: Move ${moveCount} (${move.san}) | Loss: ${gap}cp`, true);
-              newlySavedPuzzleId = Date.now();
+            // Thresholds
+            const isBlunder = gap >= currentMargin;
+            const isOpportunity = playerEvalBefore >= currentMargin && gap >= currentMargin;
+
+            if (turn === uSide && (isBlunder || isOpportunity)) {
+              const puzzleId = Date.now() + moveCount;
+
+              // FIX: If there is a gap >= margin, and it was the user's turn, 
+              // we want to show the punishment (BLINDSPOT) unless the user 
+              // simply missed a win but stayed winning (OPPORTUNITY).
+              const reason = (isBlunder && playerEvalAfter < currentMargin) ? "BLINDSPOT" : "OPPORTUNITY";
+
+              UIController.log(`✨ Generated ${reason}: Move ${moveCount} (${gap} CP)`);
+
+              // Blindspots start AFTER the move. Opportunities start BEFORE.
+              const startFen = (reason === "BLINDSPOT") ? tracker.fen() : fenBefore;
+              const startSol = (reason === "BLINDSPOT") ? post.pv : analysis.pv;
+
               StorageController.save({
-                gameId, fen: fenBefore, side: turn, gain: `${gap} CP`,
-                id: newlySavedPuzzleId,
-                solution: GameLogic.convertPvToAlgebraic(fenBefore, analysis.pv),
-                players: playerDisplay, date, depth: currentDepth, margin: currentMargin
+                gameId,
+                fen: startFen,
+                side: uSide,
+                gain: `${gap} CP`,
+                id: puzzleId,
+                reason: reason,
+                solution: GameLogic.convertPvToAlgebraic(startFen, startSol),
+                players: playerDisplay,
+                date,
+                depth: currentDepth,
+                margin: currentMargin,
+                isCompletionRecord: false
               });
               UIController.updateGameListStatus();
-              return;
             }
           }
 
-          StorageController.save({ gameId, players: playerDisplay, gain: null, depth: currentDepth, margin: currentMargin, date });
+          StorageController.save({
+            id: `comp-${gameId}-${currentDepth}-${currentMargin}`,
+            gameId,
+            players: playerDisplay,
+            gain: null,
+            depth: currentDepth,
+            margin: currentMargin,
+            date,
+            isCompletionRecord: true
+          });
+
           UIController.log(`COMPLETE: Checked ${moveCount} moves.`, true);
-          UIController.updateGameListStatus();
 
         } catch (err) {
           UIController.log(`FATAL ERROR: ${err.message}`);
@@ -739,14 +785,18 @@
         } finally {
           if (!isBatch) {
             UIController.toggleAnalysisLock(false);
-            if (newlySavedPuzzleId) {
-              const puzzle = StorageController.getAll().find(x => x.id === newlySavedPuzzleId);
-              if (puzzle) {
-                GameLogic.loadPuzzle(puzzle);
-                UIController.log("Blindspot found! Puzzle loaded for training.", true);
-              }
+
+            // Count how many puzzles were generated for this specific game
+            const gameId = sel.dataset.gameId;
+            const foundCount = StorageController.getAll().filter(p => p.gameId === gameId && p.gain !== null).length;
+
+            if (foundCount > 0) {
+              UIController.log(`Analysis complete: ${foundCount} puzzles generated!`, true);
+              DOM.display.hint.textContent = `Found ${foundCount} opportunities. Select one from the list below to train.`;
+              // Refresh the list to show all new puzzles
+              UIController.renderSavedPuzzles();
             } else {
-              DOM.display.hint.textContent = "Analysis complete. No blindspot found.";
+              DOM.display.hint.textContent = "Analysis complete. No blindspots found.";
             }
           }
         }
