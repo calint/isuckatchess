@@ -614,7 +614,6 @@
         const gainValue = puzzle.gain.replace(' CP', '');
 
         if (isBlindspot) {
-          DOM.display.hint.innerHTML = `<span style="color: #c62828; font-weight: bold;">Mistake detected! Watch the blunder, then find the opponent's best response for ${gainValue} CP.</span>`;
           DOM.display.phEval.textContent = `You blundered. Show opponent move!`;
         } else {
           DOM.display.hint.textContent = `Find the best move for ${puzzle.side} (+${gainValue} CP)`;
