@@ -270,7 +270,8 @@
       currentPuzzle: null,
       trainingGame: new Chess(),
       isBatchRunning: false,
-      currentAnimationId: 0
+      currentAnimationId: 0,
+      isAnalyzing: false
     };
 
     const DOM = {
@@ -668,6 +669,7 @@
         const sel = DOM.inputs.gameList.selectedOptions[0];
         if (!sel) return;
 
+        State.isAnalyzing = true;
         const displayIdx = isBatch ? gameIdx : 1;
         const displayTotal = isBatch ? totalGames : 1;
         let newlySavedPuzzleId = null;
@@ -707,6 +709,11 @@
 
           for (const move of history) {
             if (isBatch && !State.isBatchRunning) return;
+            if (!State.isAnalyzing) {
+              UIController.log("Analysis aborted by user.");
+              return;
+            }
+
             moveCount++;
 
             const prog = Math.round((moveCount / history.length) * 100);
@@ -825,7 +832,7 @@
         DOM.buttons.load.onclick = EventController.handleLoadGames;
         DOM.buttons.analyze.onclick = EventController.handleAnalyze;
         DOM.buttons.batch.onclick = EventController.handleBatch;
-        DOM.buttons.stop.onclick = () => { State.isBatchRunning = false; UIController.log("Stopping..."); };
+        DOM.buttons.stop.onclick = () => { State.isBatchRunning = false; State.isAnalyzing = false; UIController.log("Stopping..."); };
         DOM.buttons.clearLog.onclick = UIController.clearLog;
         DOM.buttons.prev.onclick = EventController.handleStepBack;
         DOM.buttons.next.onclick = EventController.handleStepForward;
