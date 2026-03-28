@@ -29,6 +29,7 @@ A button or link named "solution" with the moves that gets that evaluation
 should be displayed when clicked.
 
 ## pitch
+```
 improving chess for non expert players is mainly
   improving tactical vision
          by
@@ -45,3 +46,4 @@ improving chess for non expert players is mainly
 
     apply in your regular chess games
          upgrade your rating
+```
