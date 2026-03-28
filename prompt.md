@@ -19,9 +19,7 @@ javascript storage.
 
 To further improve the user chess vision also find the position which give the 
 opponent an opportunity to change the evaluation by the specified threshold
-whether it was made or not. 
-
-Stop at first occurrence.
+whether it was made or not. Call that "blunder"
 
 The problem should be presented with a chess board showing that position. As an 
 hint the app should tell user something similar to: "find white/black move to

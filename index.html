@@ -963,10 +963,32 @@
         const p = State.currentPuzzle;
         if (!p) return;
 
+        // Increment to stop any previous animations (like from "Solution")
         State.currentAnimationId++;
+        const animationId = State.currentAnimationId;
+
+        const isBlindspot = (p.reason === "BLINDSPOT");
+
+        // 1. Reset the internal game logic to the starting state
         State.trainingGame.load(p.fen);
-        State.board.position(p.fen, false);
+
+        if (isBlindspot && p.preBlunderFen) {
+          // 2. Snap to the position BEFORE the blunder instantly
+          State.board.position(p.preBlunderFen, false);
+
+          // 3. Animate the blunder move after a delay
+          setTimeout(() => {
+            if (State.currentAnimationId === animationId) {
+              State.board.position(p.fen, true);
+            }
+          }, 1000);
+        } else {
+          // For normal puzzles, just snap to the starting position
+          State.board.position(p.fen, false);
+        }
+
         UIController.updateTrainingStatus();
+        UIController.log("Puzzle reset.");
       },
 
       handleShowSolution: async () => {
