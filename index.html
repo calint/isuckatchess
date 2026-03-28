@@ -601,6 +601,7 @@
 
       loadPuzzle: (puzzle) => {
         State.currentAnimationId++;
+        const animationId = State.currentAnimationId; // Track animation to prevent race conditions
         State.currentPuzzle = puzzle;
         State.trainingGame.load(puzzle.fen);
 
@@ -612,8 +613,7 @@
         const gainValue = puzzle.gain.replace(' CP', '');
 
         if (isBlindspot) {
-          // Prompt user to find the opponent's punishment
-          DOM.display.hint.innerHTML = `<span style="color: #c62828; font-weight: bold;">Mistake detected! Find the opponent's best response for ${gainValue} CP.</span>`;
+          DOM.display.hint.innerHTML = `<span style="color: #c62828; font-weight: bold;">Mistake detected! Watch the blunder, then find the opponent's best response for ${gainValue} CP.</span>`;
           DOM.display.phEval.textContent = `You blundered. Show opponent move!`;
         } else {
           DOM.display.hint.textContent = `Find the best move for ${puzzle.side} (+${gainValue} CP)`;
@@ -621,17 +621,19 @@
         }
 
         const sol = puzzle.solution.split(" ");
+
+        // NEW: Determine the starting visual position
+        const startPosition = (isBlindspot && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
+
         State.board = Chessboard('board', {
           draggable: true,
-          position: puzzle.fen,
-          // Keep the board from the USER's original side
+          position: startPosition, // Start at the pre-blunder position if it exists
           orientation: puzzle.side,
           pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
           onDrop: (s, t) => {
             const history = State.trainingGame.history().length;
             const move = new Chess(State.trainingGame.fen()).move({ from: s, to: t, promotion: 'q' });
 
-            // If move doesn't match the engine's "punishment" move
             if (!move || move.san !== sol[history]) return 'snapback';
 
             State.trainingGame.move(move.san);
@@ -642,13 +644,22 @@
               return;
             }
 
-            // After you find the opponent's move, the "player" moves automatically
             setTimeout(() => {
               State.trainingGame.move(sol[nextIdx]);
               UIController.updateTrainingStatus();
             }, 500);
           }
         });
+
+        if (isBlindspot && puzzle.preBlunderFen) {
+          setTimeout(() => {
+            // Only animate if the user hasn't quickly clicked a different puzzle
+            if (State.currentAnimationId === animationId) {
+              State.board.position(puzzle.fen, true);
+            }
+          }, 800); // 800ms delay gives the user time to register the starting board state
+        }
+
         UIController.updateTrainingStatus();
         document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'center' });
       },
@@ -744,9 +755,13 @@
               const startFen = (reason === "BLINDSPOT") ? tracker.fen() : fenBefore;
               const startSol = (reason === "BLINDSPOT") ? post.pv : analysis.pv;
 
+              // NEW: Capture the position before the blunder occurred
+              const preBlunderFen = (reason === "BLINDSPOT") ? fenBefore : null;
+
               StorageController.save({
                 gameId,
                 fen: startFen,
+                preBlunderFen: preBlunderFen, // NEW: Save it to storage
                 side: uSide,
                 gain: `${gap} CP`,
                 id: puzzleId,
