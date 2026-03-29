@@ -15,6 +15,7 @@
       --blue: #1565c0;
       --orange: #f57c00;
       --red: #c62828;
+      --black: #000000;
       --slate: #455a64;
       --bg: #f2f4f7;
     }
@@ -210,12 +211,16 @@
       background: var(--red);
     }
 
-    .btn-slate {
-      background: var(--slate);
-    }
-
     .btn-orange {
       background: var(--orange);
+    }
+
+    .btn-black {
+      background: var(--black);
+    }
+
+    .btn-slate {
+      background: var(--slate);
     }
 
     /* Compact board-control buttons */
@@ -397,8 +402,8 @@
           <button onclick="EventController.handleRank('1')" class="btn-rank btn-green">1</button>
           <button onclick="EventController.handleRank('2')" class="btn-rank btn-blue">2</button>
           <button onclick="EventController.handleRank('3')" class="btn-rank btn-orange">3</button>
-          <button onclick="EventController.handleRank('4')" class="btn-rank" style="background:#d84315;">4</button>
-          <button onclick="EventController.handleRank('5')" class="btn-rank btn-red">5</button>
+          <button onclick="EventController.handleRank('4')" class="btn-rank btn-red">4</button>
+          <button onclick="EventController.handleRank('5')" class="btn-rank btn-black">5</button>
         </div>
       </div>
 
