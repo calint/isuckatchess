@@ -967,11 +967,9 @@
         if (isBlindspot && p.preBlunderFen) {
           State.board.position(p.preBlunderFen, false);
 
-          setTimeout(() => {
-            if (State.currentAnimationId === animationId) {
-              State.board.position(p.fen, true);
-            }
-          }, 5000);
+          if (State.currentAnimationId === animationId) {
+            State.board.position(p.fen, true);
+          }
         } else {
           State.board.position(p.fen, false);
         }
