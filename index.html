@@ -538,6 +538,11 @@
           const rankBadge = p.rating ?
             `<span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px; margin-left:5px; border: 1px solid #ccc;">${p.rating}</span>` : "";
 
+          // NEW: Determine the icon based on the puzzle's origin reason
+          const typeIcon = p.reason === "BLINDSPOT"
+            ? `<span title="Blunder" style="margin-right: 5px; font-size: 1.1rem;">❌</span>`
+            : `<span title="Missed Opportunity" style="margin-right: 5px; font-size: 1.1rem;">🎯</span>`;
+
           const div = document.createElement('div');
           div.className = 'puzzle-item';
           div.style.opacity = p.solved ? "0.6" : "1";
@@ -545,7 +550,8 @@
           div.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div onclick="EventController.loadPuzzleById(${p.id})" style="flex-grow: 1;">
-          <strong>${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
+          <!-- Inject the icon right before the players' names -->
+          <strong>${typeIcon}${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
           <small>${p.gain} | ${p.date} (${p.depth}d)</small>
         </div>
         <button onclick="StorageController.delete(${p.id})" 
@@ -602,8 +608,9 @@
 
       loadPuzzle: (puzzle) => {
         State.currentAnimationId++;
-        const animationId = State.currentAnimationId; // Track animation to prevent race conditions
+        const animationId = State.currentAnimationId;
         State.currentPuzzle = puzzle;
+
         State.trainingGame.load(puzzle.fen);
 
         DOM.display.puzzleHeader.style.display = 'block';
@@ -612,38 +619,34 @@
 
         const isBlindspot = (puzzle.reason === "BLINDSPOT");
         const gainValue = puzzle.gain.replace(' CP', '');
+        const sol = puzzle.solution.split(" ");
 
         if (isBlindspot) {
           DOM.display.phEval.textContent = `You blundered. Show opponent move!`;
         } else {
-          DOM.display.hint.textContent = `Find the best move for ${puzzle.side} (+${gainValue} CP)`;
           DOM.display.phEval.textContent = `Improve position by ${puzzle.gain}`;
         }
 
-        const sol = puzzle.solution.split(" ");
-
-        // NEW: Determine the starting visual position
         const startPosition = (isBlindspot && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
 
+        if (State.board) State.board.destroy();
         State.board = Chessboard('board', {
           draggable: true,
-          position: startPosition, // Start at the pre-blunder position if it exists
+          position: startPosition,
           orientation: puzzle.side,
+          moveSpeed: 500,
           pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
           onDrop: (s, t) => {
             const history = State.trainingGame.history().length;
             const move = new Chess(State.trainingGame.fen()).move({ from: s, to: t, promotion: 'q' });
-
             if (!move || move.san !== sol[history]) return 'snapback';
 
             State.trainingGame.move(move.san);
             const nextIdx = State.trainingGame.history().length;
-
             if (State.trainingGame.game_over() || nextIdx >= sol.length) {
               UIController.updateTrainingStatus();
               return;
             }
-
             setTimeout(() => {
               State.trainingGame.move(sol[nextIdx]);
               UIController.updateTrainingStatus();
@@ -651,17 +654,9 @@
           }
         });
 
-        if (isBlindspot && puzzle.preBlunderFen) {
-          setTimeout(() => {
-            // Only animate if the user hasn't quickly clicked a different puzzle
-            if (State.currentAnimationId === animationId) {
-              State.board.position(puzzle.fen, true);
-            }
-          }, 800); // 800ms delay gives the user time to register the starting board state
-        }
-
         UIController.updateTrainingStatus();
-        document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        document.getElementById('board').scrollIntoView({ block: 'center' });
       },
 
       runAnalysis: async (isBatch = false, gameIdx = 1, totalGames = 1) => {
