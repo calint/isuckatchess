@@ -762,7 +762,7 @@
               StorageController.save({
                 gameId,
                 fen: startFen,
-                preBlunderFen: preBlunderFen, // NEW: Save it to storage
+                preBlunderFen: preBlunderFen,
                 side: uSide,
                 gain: `${gap} CP`,
                 id: puzzleId,
@@ -805,7 +805,6 @@
             if (foundCount > 0) {
               UIController.log(`Analysis complete: ${foundCount} puzzles generated!`, true);
               DOM.display.hint.textContent = `Found ${foundCount} opportunities. Select one from the list below to train.`;
-              // Refresh the list to show all new puzzles
               UIController.renderSavedPuzzles();
             } else {
               DOM.display.hint.textContent = "Analysis complete. No blindspots found.";
@@ -963,25 +962,20 @@
 
         const isBlindspot = (p.reason === "BLINDSPOT");
 
-        // 1. Reset the internal game logic to the starting state
         State.trainingGame.load(p.fen);
 
         if (isBlindspot && p.preBlunderFen) {
-          // 2. Snap to the position BEFORE the blunder instantly
           State.board.position(p.preBlunderFen, false);
 
-          // 3. Animate the blunder move after a delay
           setTimeout(() => {
             if (State.currentAnimationId === animationId) {
               State.board.position(p.fen, true);
             }
-          }, 1000);
+          }, 5000);
         } else {
-          // For normal puzzles, just snap to the starting position
           State.board.position(p.fen, false);
         }
 
-        UIController.updateTrainingStatus();
         UIController.log("Puzzle reset.");
       },
 
