@@ -29,10 +29,10 @@ should be categorized as Rotation 1.
 
 ## step 3, practice
 
-Filter your view to show only Rotation 1 puzzles and begin practicing. Do not
-get discouraged if they seem difficult; they are specifically targeting your
-personal blind spots. Spend about a minute on each position. If you can't find
-the solution, click Hint to see which piece to move.
+Filter the view to show Rotation 1 puzzles, sort by severity and begin 
+practicing. Do not get discouraged if they seem difficult; they are specifically
+targeting your personal blind spots. Spend about a minute on each position. If
+you can't find the solution, click Hint to see which piece to move.
 
 Calculation gets easier with practice, much like learning the multiplication
 tables it takes time before the answers come instantly. To understand why
@@ -65,4 +65,15 @@ Switch your filter back to Uncategorized and repeat the process from Step 1.
 Once all your active puzzles have been moved into the next Rotation batch,
 filter for that new rotation and continue your training.
 
+## openings
 
+At these ratings you will meet many that have a system opening they know really
+well. Sometimes you face very sharp openings where your opponent feels at home
+with tricks and tactics. You want to get out of the opening using the
+principles: get the pieces out, castle, find yourself in starting a middle game
+that is not horrible.
+
+After the game, if you had a horrible start to middle game use the countless
+videos about any opening and learn some ideas to counter it. Knowing a few moves
+by heart for the common openings you have encountered helps a lot next time you
+face it.
