@@ -78,4 +78,5 @@ will make a huge difference next time.
 
 Watching videos about openings is the more relaxed part of the training. Focus
 on the core ideas instead of memorizing moves. Ideas are easier to remember, and
-they make the best candidate moves feel obvious.
+they make the candidate moves more obvious.
+
