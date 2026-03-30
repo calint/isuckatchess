@@ -67,13 +67,15 @@ filter for that new rotation and continue your training.
 
 ## openings
 
-At these ratings you will meet many that have a system opening they know really
-well. Sometimes you face very sharp openings where your opponent feels at home
-with tricks and tactics. You want to get out of the opening using the
-principles: get the pieces out, castle, find yourself in starting a middle game
-that is not horrible.
+At this level, many opponents rely on "system" openings they know by heart.
+You’ll often face sharp lines where they’re comfortable with specific tricks and
+tactics. Your goal is simply to survive the opening: develop your pieces,
+castle, and reach a playable middlegame.
 
-After the game, if you had a horrible start to middle game use the countless
-videos about any opening and learn some ideas to counter it. Knowing a few moves
-by heart for the common openings you have encountered helps a lot next time you
-face it.
+If you get crushed early, watch a quick video afterward to learn the 
+counter-ideas. Memorizing a few key responses to the common openings you face
+will make a huge difference next time.
+
+Watching videos about openings is the more relaxed part of the training. Focus
+on the core ideas instead of just memorizing moves. Ideas are easier to
+remember, and they make the best candidate moves feel obvious.
