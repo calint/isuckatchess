@@ -1,4 +1,4 @@
-# blind spot trainer
+# a patzers guide to better chess - blind spot trainer
 
 ## intention
 
