@@ -396,15 +396,17 @@
         <button id="btnHint" class="grow-1 btn-sm">Hint</button>
         <button id="btnReset" class="grow-1 btn-slate btn-sm">Reset</button>
         <button id="btnSolution" class="grow-1 btn-orange btn-sm">Solution</button>
+      </div>
 
-        <!-- Rank buttons -->
-        <div class="row-sm-gap" style="margin-top: 10px;">
-          <button onclick="EventController.handleRank('1')" class="btn-rank btn-green">1</button>
-          <button onclick="EventController.handleRank('2')" class="btn-rank btn-blue">2</button>
-          <button onclick="EventController.handleRank('3')" class="btn-rank btn-orange">3</button>
-          <button onclick="EventController.handleRank('4')" class="btn-rank btn-red">4</button>
-          <button onclick="EventController.handleRank('5')" class="btn-rank btn-black">5</button>
-        </div>
+      <!-- Classify row -->
+      <div class="row-sm-gap" style="margin-top: 10px; align-items: center;">
+        <span
+          style="font-size: 0.8rem; font-weight: bold; color: var(--slate); white-space: nowrap; margin-right: 5px;">Classify:</span>
+        <button onclick="EventController.handleRank('1')" class="btn-rank btn-green grow-1">Rotation 1</button>
+        <button onclick="EventController.handleRank('2')" class="btn-rank btn-blue grow-1">Rotation 2</button>
+        <button onclick="EventController.handleRank('3')" class="btn-rank btn-orange grow-1">Basic</button>
+        <button onclick="EventController.handleRank('4')" class="btn-rank btn-red grow-1">Overtrained</button>
+        <button onclick="EventController.handleRank('5')" class="btn-rank btn-black grow-1">Too complex</button>
       </div>
 
       <!-- Saved puzzles header -->
@@ -418,12 +420,12 @@
         </select>
         <select id="rankFilter" class="filter-select">
           <option value="All">All Puzzles</option>
-          <option value="1">Category 1</option>
-          <option value="2">Category 2</option>
-          <option value="3">Category 3</option>
-          <option value="4">Category 4</option>
-          <option value="5">Category 5</option>
-          <option value="Unrated">Uncategorized</option>
+          <option value="1">Rotation 1</option>
+          <option value="2">Rotation 2</option>
+          <option value="3">Basic</option>
+          <option value="4">Overtrained</option>
+          <option value="5">Too complex</option>
+          <option value="Unrated">Unclassified</option>
         </select>
       </div>
 
@@ -542,7 +544,7 @@
         if (p) {
           p.rating = rating;
           StorageController._persist(items);
-          UIController.log(`Ranked puzzle as: ${rating}`);
+          UIController.log(`Classified puzzle.`);
         }
       }
     };
