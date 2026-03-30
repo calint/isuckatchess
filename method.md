@@ -80,3 +80,18 @@ Watching videos about openings is the more relaxed part of the training. Focus
 on the core ideas instead of memorizing moves. Ideas are easier to remember, and
 they make the candidate moves more obvious.
 
+## checklist
+
+It’s remarkable how many games at this level are decided simply by capturing a
+piece left en prise or a one move fork. Before committing to a move, try
+visualizing your piece on its new square and scanning the board for potential
+captures. Reducing these types of blunders is often the most effective way to
+start climbing the ranks.
+
+When your opponent makes a move, it helps to pause and ask what is being
+threatened. It’s also worth checking if the moved piece was previously blocking
+a long-range unit, like a bishop or rook, which might now have a clear line of
+attack.
+
+A helpful way to structure your calculation is to prioritize CCT: Checks,
+Captures, and Threats.
