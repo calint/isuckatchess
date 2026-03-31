@@ -102,7 +102,7 @@ Going for a checkmate attack is often risky, as it usually requires sacrifices
 and very precise tactics. A safer strategy is to simply win a single pawn, then
 trade pieces until you reach an endgame where your extra material does the work.
 Learning to like these types of endings can feel a bit slow at first, but it
-becomes quite satisfying as you get the hang to them.
+becomes quite satisfying as you get the hang of them.
 
 Learn to activate your king and create passed pawns. Even theoretical draws
 often turn into a win at this level.
