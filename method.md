@@ -109,4 +109,5 @@ often turn into a win at this level.
 
 ## beginning of positional play
 
-Realize that it is about the squares and how to control them using the pieces.
+Realize that it is about the squares and how to control them using the pieces
+and pawns.
