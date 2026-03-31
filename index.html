@@ -645,6 +645,12 @@
         document.querySelectorAll('.settings-row label').forEach(lbl => {
           lbl.style.display = isAnalyzing ? 'none' : 'block';
         });
+
+        // Hide the puzzle header specifically when analysis starts
+        if (isAnalyzing) {
+          DOM.display.puzzleHeader.style.display = 'none';
+        }
+
         DOM.buttons.stop.style.display = isAnalyzing ? 'block' : 'none';
       },
 
