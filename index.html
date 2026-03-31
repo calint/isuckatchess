@@ -438,6 +438,14 @@
   <script src="lib/chess.min.js"></script>
 
   <script>
+    const CATEGORY_NAMES = {
+      '1': 'Rotation 1',
+      '2': 'Rotation 2',
+      '3': 'Basic',
+      '4': 'Overtrained',
+      '5': 'Too Complex'
+    };
+
     // ==========================================
     // 1. STATE & DOM CACHE
     // ==========================================
@@ -689,8 +697,9 @@
         DOM.display.puzzles.innerHTML = "";
 
         items.forEach(p => {
+          const rankName = CATEGORY_NAMES[p.rating] || p.rating;
           const rankBadge = p.rating
-            ? `<span class="rank-badge">${p.rating}</span>` : "";
+            ? `<span class="rank-badge">${rankName}</span>` : "";
 
           const typeIcon = p.reason === "BLINDSPOT"
             ? `<span title="Blunder" style="margin-right:5px;font-size:1.1rem;">❌</span>`
