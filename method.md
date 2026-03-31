@@ -10,8 +10,8 @@ recognition, and there is no better place to start than with your own games.
 ## method
 
 Use the Blind Spot Trainer to retrieve and analyze your past games. The tool
-will generate custom puzzles from positions where you either missed
-an opportunity or made a blunder.
+will generate custom puzzles from positions where you either missed an
+opportunity or made a blunder.
 
 ## step 1, create puzzles
 
@@ -29,7 +29,7 @@ should be categorized as Rotation 1.
 
 ## step 3, practice
 
-Filter the view to show Rotation 1 puzzles, sort by severity and begin 
+Filter the view to show Rotation 1 puzzles, sort by severity and begin
 practicing. Do not get discouraged if they seem difficult; they are specifically
 targeting your personal blind spots. Spend about a minute on each position. If
 you can't find the solution, click Hint to see which piece to move.
@@ -39,10 +39,10 @@ tables it takes time before the answers come instantly. To understand why
 alternative moves fail, copy the position's FEN, paste it into
 <https://lichess.org/analysis/>, and experiment with different replies.
 
-Ensure you understand the reasoning behind the correct solution, keeping in
-mind that some puzzles may have multiple winning lines. Once you successfully
-solve a puzzle, re-categorize it as Rotation 2. You will move on to the
-Rotation 2 collection once the Rotation 1 batch is complete.
+Ensure you understand the reasoning behind the correct solution, keeping in mind
+that some puzzles may have multiple winning lines. Once you successfully solve a
+puzzle, re-categorize it as Rotation 2. You will move on to the Rotation 2
+collection once the Rotation 1 batch is complete.
 
 ## step 4, overtraining
 
@@ -52,13 +52,13 @@ bypasses the calculation practice you need. If this happens, categorize it as
 Overtrained so you can set it aside. You can revisit this batch much later when
 the specific positions have faded from your memory.
 
-## step 3, play long games
+## step 5, play long games
 
 To effectively apply your training, play with a time control that allows you to
 think deeply about each move. A 10-minute game is too fast, and while 30 minutes
 is better, the sweet spot for improvement is typically a 60-minute game.
 
-## step 4, repeat
+## step 6, repeat
 
 After playing a new game, retrieve it using Fetch Games and run the analysis.
 Switch your filter back to Uncategorized and repeat the process from Step 1.
@@ -72,7 +72,7 @@ You’ll often face sharp lines where they’re comfortable with specific tricks
 tactics. Your goal is simply to survive the opening: develop your pieces,
 castle, and reach a playable middlegame.
 
-If you get crushed early, watch a quick video afterward to learn the 
+If you get crushed early, watch a quick video afterward to learn the
 counter-ideas. Memorizing a few key responses to the common openings you face
 will makes a difference.
 
