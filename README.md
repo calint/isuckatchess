@@ -1,0 +1,1 @@
+https://calint.github.io/isuckatchess/
