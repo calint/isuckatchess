@@ -988,7 +988,7 @@
         DOM.inputs.gameList.innerHTML = "";
 
         data.games.reverse().forEach((g, i) => {
-          const gameId = btoa(`${g.white.username}-${g.black.username}-${g.end_time}`).substring(0, 16);
+          const gameId = `${g.white.username}-${g.black.username}-${g.end_time}`;
           const opt = new Option("", i);
           Object.assign(opt.dataset, {
             pgn: g.pgn, gameId,
