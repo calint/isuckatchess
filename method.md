@@ -104,5 +104,9 @@ trade pieces until you reach an endgame where your extra material does the work.
 Learning to like these types of endings can feel a bit slow at first, but it
 becomes quite satisfying as you get the hang to them.
 
-Learn to activate your king and create passed pawns. Even a theoretical draw
+Learn to activate your king and create passed pawns. Even theoretical draws
 often turn into a win at this level.
+
+## beginning of positional play
+
+Realize that it is about the squares and how to control them using the pieces.
