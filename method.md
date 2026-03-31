@@ -74,7 +74,7 @@ castle, and reach a playable middlegame.
 
 If you get crushed early, watch a quick video afterward to learn the 
 counter-ideas. Memorizing a few key responses to the common openings you face
-will make a huge difference next time.
+will makes a difference.
 
 Watching videos about openings is the more relaxed part of the training. Focus
 on the core ideas instead of memorizing moves. Ideas are easier to remember, and
