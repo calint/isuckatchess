@@ -104,6 +104,5 @@ trade pieces until you reach an endgame where your extra material does the work.
 Learning to like these types of endings can feel a bit slow at first, but it
 becomes quite satisfying as you get the hang to them.
 
-As long as there are pawns on both sides of the board and you learn to activate
-your king and create passed pawns, even a theoretical draw often turn into a win
-at this level.
+Learn to activate your king and create passed pawns. Even a theoretical draw
+often turn into a win at this level.
