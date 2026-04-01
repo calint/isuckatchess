@@ -8,6 +8,7 @@
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♚</text></svg>">
   <link rel="stylesheet" href="lib/chessboard-1.0.0.min.css">
   <style>
+    /* ── Design tokens ── */
     :root {
       --primary: #0b4a6f;
       --primary-light: #607d8b;
@@ -20,6 +21,7 @@
       --bg: #f2f4f7;
     }
 
+    /* ── Base ── */
     body {
       font-family: system-ui;
       background: var(--bg);
@@ -30,10 +32,10 @@
     }
 
     header {
-      background: var(--primary);
-      color: white;
       width: 100%;
       padding: 1rem;
+      background: var(--primary);
+      color: white;
       text-align: center;
     }
 
@@ -46,6 +48,7 @@
       padding: 2rem;
     }
 
+    /* ── Form controls ── */
     input,
     select,
     button {
@@ -59,15 +62,14 @@
     button {
       background: var(--primary);
       color: white;
-      cursor: pointer;
       font-weight: 600;
       border: none;
+      cursor: pointer;
       transition: opacity 0.2s;
     }
 
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
+    button:hover {
+      filter: brightness(1.1);
     }
 
     button:active {
@@ -76,97 +78,18 @@
       transition: transform 0.05s;
     }
 
-    button:hover {
-      filter: brightness(1.1);
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
     }
 
-    #board {
-      width: 100%;
-      margin: 1rem 0;
-    }
-
-    #log {
-      font-family: 'Courier New', monospace;
-      font-size: 0.75rem;
-      height: 300px;
-      width: 100%;
-      box-sizing: border-box;
-      overflow-y: auto;
-      overflow-x: hidden;
-      background: #222;
-      color: #00ff00;
-      padding: 0.8rem;
-      border-radius: 4px;
-      margin-top: 10px;
-      line-height: 1.4;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .panel {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-      height: fit-content;
-      min-width: 0;
-    }
-
-    .puzzle-item {
-      padding: 0.8rem;
-      border-bottom: 1px solid #eee;
-      transition: background 0.2s;
-      cursor: pointer;
-    }
-
-    .puzzle-item:hover {
-      background: #f9f9f9;
-    }
-
-    .board-container {
+    /* ── Layout helpers ── */
+    .left-col {
       display: flex;
-      gap: 15px;
-      align-items: stretch;
-      margin: 1rem 0;
+      flex-direction: column;
+      gap: 2rem;
     }
 
-    #eval-bar {
-      width: 30px;
-      background: #444;
-      border-radius: 4px;
-      position: relative;
-      overflow: hidden;
-      border: 1px solid #ccc;
-    }
-
-    #eval-fill {
-      width: 100%;
-      height: 50%;
-      background: #eee;
-      position: absolute;
-      bottom: 0;
-      transition: height 0.3s ease;
-    }
-
-    .settings-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-      margin-bottom: 10px;
-    }
-
-    .settings-row label {
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .badge {
-      font-weight: bold;
-      color: var(--primary);
-      font-size: 0.7rem;
-    }
-
-    /* Layout helpers */
     .row {
       display: flex;
       gap: 0.5rem;
@@ -174,12 +97,12 @@
 
     .row-tight {
       display: flex;
-      gap: 8px;
+      gap: 0.5rem;
     }
 
     .row-sm-gap {
       display: flex;
-      gap: 5px;
+      gap: 0.3rem;
     }
 
     .grow-2 {
@@ -194,7 +117,81 @@
       flex: 0.5;
     }
 
-    /* Button colour variants */
+    /* ── Panel ── */
+    .panel {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      height: fit-content;
+      min-width: 0;
+    }
+
+    /* ── Board ── */
+    #board {
+      width: 100%;
+      margin: 1rem 0;
+    }
+
+    .board-container {
+      display: flex;
+      gap: 15px;
+      align-items: stretch;
+      margin: 1rem 0;
+    }
+
+    /* ── Eval bar ── */
+    #eval-bar {
+      width: 30px;
+      background: #444;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #eval-fill {
+      width: 100%;
+      height: 50%;
+      background: #eee;
+      position: absolute;
+      bottom: 0;
+      transition: height 0.3s ease;
+    }
+
+    /* ── Log ── */
+    #log {
+      width: 100%;
+      height: 300px;
+      padding: 0.8rem;
+      margin-top: 0.6rem;
+      box-sizing: border-box;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: #222;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-all;
+      border-radius: 4px;
+    }
+
+    /* ── Settings row ── */
+    .settings-row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-end;
+      margin-bottom: 0.6rem;
+    }
+
+    .settings-row label {
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    /* ── Button colour variants ── */
     .btn-reload {
       background: var(--primary-light);
     }
@@ -223,7 +220,7 @@
       background: var(--slate);
     }
 
-    /* Compact board-control buttons */
+    /* ── Button size variants ── */
     .btn-sm {
       font-size: 0.75rem;
       padding: 0.6rem 0.2rem;
@@ -234,47 +231,77 @@
       padding: 4px;
     }
 
-    /* Hint box */
+    /* ── Board controls row ── */
+    .board-controls {
+      margin-top: 0.6rem;
+    }
+
+    /* ── Classify row ── */
+    .classify-row {
+      display: flex;
+      gap: 0.3rem;
+      align-items: center;
+      margin-top: 0.6rem;
+    }
+
+    .classify-label {
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: var(--slate);
+      white-space: nowrap;
+      margin-right: 5px;
+    }
+
+    /* ── Hint box ── */
     #hint {
       background: #fff9c4;
       padding: 0.5rem;
       border-radius: 4px;
     }
 
-    /* Puzzle header card */
+    /* ── Puzzle header card ── */
     #puzzle-header {
+      display: none;
+      padding: 1rem;
+      margin-bottom: 1rem;
       background: #333;
       color: #fff;
-      padding: 1rem;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-      display: none;
       border-left: 4px solid #ffca28;
+      border-radius: 8px;
     }
 
     #ph-players {
-      font-weight: bold;
       font-size: 1.1rem;
+      font-weight: bold;
     }
 
     #ph-meta {
-      color: #aaa;
       font-size: 0.8rem;
+      color: #aaa;
     }
 
     #ph-eval {
+      font-weight: bold;
       color: #ffca28;
+    }
+
+    /* ── Progress hint ── */
+    .progress-game {
       font-weight: bold;
     }
 
-    /* Saved-puzzles header */
+    .progress-player {
+      font-size: 0.85rem;
+    }
+
+    /* ── Saved puzzles ── */
     .puzzles-header {
-      margin-top: 2rem;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 0.6rem;
+      margin-top: 2rem;
+      padding-bottom: 0.6rem;
       border-bottom: 2px solid #eee;
-      padding-bottom: 10px;
     }
 
     .puzzles-header h3 {
@@ -289,31 +316,61 @@
       padding: 2px 5px;
     }
 
-    /* Rank badge inside puzzle list items */
+    .puzzle-item {
+      padding: 0.8rem;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .puzzle-item:hover {
+      background: #f9f9f9;
+    }
+
+    .puzzle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .puzzle-clickable {
+      flex-grow: 1;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
     .rank-badge {
       font-size: 0.7rem;
-      background: #eee;
       padding: 2px 5px;
-      border-radius: 4px;
       margin-left: 5px;
+      background: #eee;
       border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .type-icon {
+      margin-right: 5px;
+      font-size: 1.1rem;
     }
 
     .btn-delete {
       width: auto;
       padding: 4px 10px;
+      margin-left: 0.6rem;
       background: var(--red);
-      margin-left: 10px;
     }
 
-    /* Clear-log button */
+    /* ── Misc ── */
     #btnClearLog {
       background: var(--slate);
       margin-top: 5px;
       font-size: 0.8rem;
     }
 
-    /* Stop button (hidden by default) */
     #btnStop {
       display: none;
     }
@@ -327,7 +384,7 @@
 
   <main>
     <!-- ── Left column ── -->
-    <div style="display: flex; flex-direction: column; gap: 2rem;">
+    <div class="left-col">
       <section class="panel">
 
         <!-- Player / date selectors -->
@@ -389,7 +446,7 @@
       </div>
 
       <!-- Board controls -->
-      <div class="row-tight" style="margin-top: 10px;">
+      <div class="row-tight board-controls">
         <button id="btnCopyFen" class="grow-1 btn-slate btn-sm">Copy FEN</button>
         <button id="btnPrev" class="grow-1 btn-sm">Back</button>
         <button id="btnNext" class="grow-1 btn-sm">Forward</button>
@@ -399,17 +456,16 @@
       </div>
 
       <!-- Classify row -->
-      <div class="row-sm-gap" style="margin-top: 10px; align-items: center;">
-        <span
-          style="font-size: 0.8rem; font-weight: bold; color: var(--slate); white-space: nowrap; margin-right: 5px;">Classify:</span>
-        <button onclick="EventController.handleRank('1')" class="btn-rank btn-green grow-1">Rotation 1</button>
-        <button onclick="EventController.handleRank('2')" class="btn-rank btn-blue grow-1">Rotation 2</button>
+      <div class="classify-row">
+        <span class="classify-label">Classify:</span>
+        <button onclick="EventController.handleRank('1')" class="btn-rank btn-green  grow-1">Rotation 1</button>
+        <button onclick="EventController.handleRank('2')" class="btn-rank btn-blue   grow-1">Rotation 2</button>
         <button onclick="EventController.handleRank('3')" class="btn-rank btn-orange grow-1">Basic</button>
-        <button onclick="EventController.handleRank('4')" class="btn-rank btn-red grow-1">Overtrained</button>
-        <button onclick="EventController.handleRank('5')" class="btn-rank btn-black grow-1">Too complex</button>
+        <button onclick="EventController.handleRank('4')" class="btn-rank btn-red    grow-1">Overtrained</button>
+        <button onclick="EventController.handleRank('5')" class="btn-rank btn-black  grow-1">Too complex</button>
       </div>
 
-      <!-- Saved puzzles header -->
+      <!-- Saved puzzles -->
       <div class="puzzles-header">
         <h3>Saved Puzzles</h3>
         <select id="sortPuzzles" class="filter-select">
@@ -446,9 +502,8 @@
       '5': 'Too Complex'
     };
 
-    // ==========================================
-    // 1. STATE & DOM CACHE
-    // ==========================================
+    // ── 1. STATE & DOM CACHE ──────────────────────────────────────────────────
+
     const State = {
       engine: null,
       board: null,
@@ -494,9 +549,8 @@
       }
     };
 
-    // ==========================================
-    // 2. STORAGE CONTROLLER
-    // ==========================================
+    // ── 2. STORAGE CONTROLLER ─────────────────────────────────────────────────
+
     const StorageController = {
       KEY: 'chess_puzzles',
 
@@ -515,13 +569,18 @@
 
       findPuzzle: (gameId, depth, margin) =>
         StorageController.getAll().find(p =>
-          p.gameId === gameId && p.depth === depth && p.margin === margin &&
-          p.gain !== null && !p.isCompletionRecord
+          p.gameId === gameId &&
+          p.depth === depth &&
+          p.margin === margin &&
+          p.gain !== null &&
+          !p.isCompletionRecord
         ),
 
       findRecord: (gameId, depth, margin) =>
         StorageController.getAll().find(p =>
-          p.gameId === gameId && p.depth === depth && p.margin === margin &&
+          p.gameId === gameId &&
+          p.depth === depth &&
+          p.margin === margin &&
           p.isCompletionRecord === true
         ),
 
@@ -552,15 +611,13 @@
         if (p) {
           p.rating = rating;
           StorageController._persist(items);
-          const categoryName = CATEGORY_NAMES[rating] || rating;
-          UIController.log(`${p.players} to ${categoryName}`);
+          UIController.log(`${p.players} to ${CATEGORY_NAMES[rating] || rating}`);
         }
       }
     };
 
-    // ==========================================
-    // 3. API CONTROLLER
-    // ==========================================
+    // ── 3. API CONTROLLER ─────────────────────────────────────────────────────
+
     const ApiController = {
       fetchArchives: async (user) => {
         const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
@@ -576,9 +633,8 @@
       }
     };
 
-    // ==========================================
-    // 4. ENGINE CONTROLLER
-    // ==========================================
+    // ── 4. ENGINE CONTROLLER ──────────────────────────────────────────────────
+
     const EngineController = {
       getEngine: async () => {
         if (!State.engine) State.engine = new Worker("lib/stockfish.js");
@@ -623,9 +679,8 @@
       }
     };
 
-    // ==========================================
-    // 5. UI CONTROLLER
-    // ==========================================
+    // ── 5. UI CONTROLLER ──────────────────────────────────────────────────────
+
     const UIController = {
       log: (msg, isHeader = false) => {
         const div = document.createElement('div');
@@ -655,11 +710,7 @@
           lbl.style.display = isAnalyzing ? 'none' : 'block';
         });
 
-        // Hide the puzzle header specifically when analysis starts
-        if (isAnalyzing) {
-          DOM.display.puzzleHeader.style.display = 'none';
-        }
-
+        if (isAnalyzing) DOM.display.puzzleHeader.style.display = 'none';
         DOM.buttons.stop.style.display = isAnalyzing ? 'block' : 'none';
       },
 
@@ -699,19 +750,17 @@
 
         items.forEach(p => {
           const rankName = CATEGORY_NAMES[p.rating] || p.rating;
-          const rankBadge = p.rating
-            ? `<span class="rank-badge">${rankName}</span>` : "";
-
+          const rankBadge = p.rating ? `<span class="rank-badge">${rankName}</span>` : "";
           const typeIcon = p.reason === "BLINDSPOT"
-            ? `<span title="Blunder" style="margin-right:5px;font-size:1.1rem;">[??]</span>`
-            : `<span title="Missed Opportunity" style="margin-right:5px;font-size:1.1rem;">[!]</span>`;
+            ? `<span class="type-icon" title="Blunder">[??]</span>`
+            : `<span class="type-icon" title="Missed Opportunity">[!]</span>`;
 
           const div = document.createElement('div');
           div.className = 'puzzle-item';
           div.style.opacity = p.solved ? "0.6" : "1";
           div.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div onclick="EventController.loadPuzzleById(${p.id})" style="flex-grow:1;">
+            <div class="puzzle-row">
+              <div class="puzzle-clickable" onclick="EventController.loadPuzzleById(${p.id})">
                 <strong>${typeIcon}${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
                 <small>${p.gain} | ${p.date} (${p.depth}d)</small>
               </div>
@@ -751,9 +800,8 @@
       }
     };
 
-    // ==========================================
-    // 6. GAME LOGIC
-    // ==========================================
+    // ── 6. GAME LOGIC ─────────────────────────────────────────────────────────
+
     const GameLogic = {
       convertPvToAlgebraic: (fen, pv) => {
         const temp = new Chess(fen);
@@ -777,7 +825,7 @@
         const isBlindspot = puzzle.reason === "BLINDSPOT";
         DOM.display.phEval.textContent = isBlindspot
           ? `You blundered. Show opponent move!`
-          : `Improve position by ${puzzle.gain}`;
+          : `Opportunity to improve position by ${puzzle.gain}`;
 
         const startPosition = (isBlindspot && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
         const sol = puzzle.solution.split(" ");
@@ -852,8 +900,8 @@
             moveCount++;
             const prog = Math.round((moveCount / history.length) * 100);
             DOM.display.hint.innerHTML = `
-              <div style="font-weight:bold;">Game ${isBatch ? gameIdx : 1} of ${isBatch ? totalGames : 1}</div>
-              <div style="font-size:0.85rem;">${playerDisplay}</div>
+              <div class="progress-game">Game ${isBatch ? gameIdx : 1} of ${isBatch ? totalGames : 1}</div>
+              <div class="progress-player">${playerDisplay}</div>
               <small>Move ${moveCount}/${history.length} (${prog}%)</small>
             `;
 
@@ -940,9 +988,8 @@
       }
     };
 
-    // ==========================================
-    // 7. EVENT CONTROLLER
-    // ==========================================
+    // ── 7. EVENT CONTROLLER ───────────────────────────────────────────────────
+
     const EventController = {
       init: () => {
         State.board = Chessboard('board', {
@@ -1001,10 +1048,13 @@
           const gameId = `${g.white.username}-${g.black.username}-${g.end_time}`;
           const opt = new Option("", i);
           Object.assign(opt.dataset, {
-            pgn: g.pgn, gameId,
+            pgn: g.pgn,
+            gameId,
             date: new Date(g.end_time * 1000).toLocaleDateString(),
-            whiteName: g.white.username, blackName: g.black.username,
-            wR: g.white.rating || "?", bR: g.black.rating || "?"
+            whiteName: g.white.username,
+            blackName: g.black.username,
+            wR: g.white.rating || "?",
+            bR: g.black.rating || "?"
           });
           DOM.inputs.gameList.add(opt);
         });
