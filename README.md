@@ -1,4 +1,4 @@
-# blind spot trainer - a patzers guide to get better at chess
+# blind spot trainer
 
 https://calint.github.io/isuckatchess/
 
