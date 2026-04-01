@@ -552,7 +552,8 @@
         if (p) {
           p.rating = rating;
           StorageController._persist(items);
-          UIController.log(`Classified puzzle.`);
+          const categoryName = CATEGORY_NAMES[rating] || rating;
+          UIController.log(`${p.players} to ${categoryName}`);
         }
       }
     };
