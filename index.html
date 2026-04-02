@@ -452,8 +452,9 @@
           <option value="5">Too complex</option>
           <option value="Unrated">Unclassified</option>
         </select>
+        <span id="puzzleCount"
+          style="font-size: 0.9rem; font-weight: bold; color: var(--primary); margin-right: 10px;">(0)</span>
       </div>
-
       <div id="puzzles"></div>
     </section>
   </main>
@@ -518,6 +519,7 @@
         phMeta: document.getElementById('ph-meta'),
         phEval: document.getElementById('ph-eval'),
         puzzles: document.getElementById('puzzles'),
+        puzzleCount: document.getElementById('puzzleCount'),
         classifyControls: document.getElementById('classifyControls')
       };
     };
@@ -739,6 +741,8 @@
           if (filterValue === "Unrated") return !p.rating;
           return p.rating === filterValue;
         });
+
+        DOM.display.puzzleCount.textContent = `(${items.length})`;
 
         items.sort((a, b) => {
           if (sortValue === "rating") {
