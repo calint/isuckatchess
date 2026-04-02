@@ -42,9 +42,10 @@ alternative moves fail, copy the position's FEN, paste it into
 <https://lichess.org/analysis/>, and experiment with different replies.
 
 Ensure you understand the reasoning behind the correct solution, keeping in mind
-that some puzzles may have multiple winning lines. Once you successfully solve a
-puzzle, re-categorize it as Rotation 2. You will move on to the Rotation 2
-collection once the Rotation 1 batch is complete.
+that some puzzles may have multiple winning lines and do not need to be solved
+until completion. Once you successfully solve a puzzle, re-categorize it as
+Rotation 2. You will move on to the Rotation 2 collection once the Rotation 1
+batch is complete.
 
 ## step 4, overtraining
 
