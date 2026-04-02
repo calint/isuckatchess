@@ -770,7 +770,7 @@
           div.innerHTML = `
             <div class="puzzle-row">
               <div class="puzzle-clickable" data-id="${p.id}">
-                <strong>${typeIcon}${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
+                <strong>${typeIcon}${p.players}</strong><br>
                 <small>${p.gain} | ${p.date} (${p.depth}d)</small>
               </div>
               <button data-delete-id="${p.id}" class="btn-delete">Delete</button>
