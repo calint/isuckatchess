@@ -239,9 +239,10 @@
       padding: 0.6rem 0.2rem;
     }
 
-    .btn-rank {
+    .btn-classify {
       font-size: 0.8rem;
       padding: 4px;
+      white-space: nowrap;
     }
 
     .btn-delete {
@@ -431,12 +432,12 @@
 
       <div class="classify-row" id="classifyControls">
         <span class="classify-label">Classify:</span>
-        <button data-rank="1" class="btn-rank btn-green grow-1">Rotation 1</button>
-        <button data-rank="2" class="btn-rank btn-green grow-1">Rotation 2</button>
-        <button data-rank="3" class="btn-rank btn-orange grow-1">Basic</button>
-        <button data-rank="4" class="btn-rank btn-red grow-1">Overtrained</button>
-        <button data-rank="5" class="btn-rank btn-black grow-1">Too complex 1</button>
-        <button data-rank="6" class="btn-rank btn-black grow-1">Too complex 2</button>
+        <button data-rank="1" class="btn-classify btn-green grow-1">Rotation 1</button>
+        <button data-rank="2" class="btn-classify btn-green grow-1">Rotation 2</button>
+        <button data-rank="3" class="btn-classify btn-orange grow-1">Overtrained 1</button>
+        <button data-rank="4" class="btn-classify btn-orange grow-1">Overtrained 2</button>
+        <button data-rank="5" class="btn-classify btn-black grow-1">Too complex 1</button>
+        <button data-rank="6" class="btn-classify btn-black grow-1">Too complex 2</button>
       </div>
 
       <div class="puzzles-header">
@@ -451,8 +452,8 @@
           <option value="All">All Puzzles</option>
           <option value="1">Rotation 1</option>
           <option value="2">Rotation 2</option>
-          <option value="3">Basic</option>
-          <option value="4">Overtrained</option>
+          <option value="3">Overtrained 1</option>
+          <option value="4">Overtrained 2</option>
           <option value="5">Too complex 1</option>
           <option value="6">Too complex 2</option>
           <option value="Unrated">Unclassified</option>
