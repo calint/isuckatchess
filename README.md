@@ -70,11 +70,9 @@ filter for that new rotation and continue your training.
 
 ## step 7, advancing
 
-Once you have a better understanding of your current rotation, review your Too
-Complex 1 puzzles and move any that you now understand into an active Rotation.
-Any puzzles that remain difficult to grasp should be moved to Too Complex 2 to
-keep your training focused. This ensures your workspace is clear of overwhelming
-tasks while promoting puzzles that have become manageable.
+Review your Too Complex 1 puzzles and move any that offer a now-understandable
+gain into an active Rotation. Puzzles that remain difficult or lack a clear,
+instructional advantage should be moved to Too Complex 2 for later review.
 
 ## openings
 
