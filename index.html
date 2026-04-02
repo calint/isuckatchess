@@ -1267,46 +1267,37 @@
 
         URL.revokeObjectURL(url);
         console.log("Backup file created!");
+      },
+
+      handleUploadDatabase: (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const importedData = JSON.parse(e.target.result);
+            if (!Array.isArray(importedData)) throw new Error("Invalid format.");
+
+            const existingData = StorageController.getAll();
+            const existingIds = new Set(existingData.map(p => p.id));
+            const newItems = importedData.filter(p => !existingIds.has(p.id));
+
+            localStorage.setItem(StorageController.KEY, JSON.stringify([...existingData, ...newItems]));
+
+            UIController.log(`Imported ${newItems.length} new puzzles!`, true);
+            UIController.renderSavedPuzzles();
+            UIController.updateGameListStatus();
+            event.target.value = '';
+          } catch (err) {
+            UIController.log(`Upload failed: ${err.message}`);
+          }
+        };
+        reader.readAsText(file);
       }
     };
 
-    handleUploadDatabase: (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target.result);
-
-          if (!Array.isArray(importedData)) {
-            throw new Error("Invalid format: Expected an array of puzzles.");
-          }
-
-          // Merge logic: Combine existing and new, keeping unique IDs
-          const existingData = StorageController.getAll();
-          const existingIds = new Set(existingData.map(p => p.id));
-
-          const newItems = importedData.filter(p => !existingIds.has(p.id));
-          const mergedData = [...existingData, ...newItems];
-
-          localStorage.setItem(StorageController.KEY, JSON.stringify(mergedData));
-
-          UIController.log(`Successfully imported ${newItems.length} new puzzles!`, true);
-          UIController.renderSavedPuzzles();
-          UIController.updateGameListStatus();
-
-          // Reset input so the same file can be uploaded again if needed
-          event.target.value = '';
-        } catch (err) {
-          UIController.log(`Upload failed: ${err.message}`);
-          console.error(err);
-        }
-      };
-      reader.readAsText(file);
-    },
-
-      document.addEventListener('DOMContentLoaded', EventController.init);
+    document.addEventListener('DOMContentLoaded', EventController.init);
   </script>
 </body>
 
