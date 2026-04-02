@@ -3,12 +3,13 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blindspot Trainer</title>
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♚</text></svg>">
   <link rel="stylesheet" href="lib/chessboard-1.0.0.min.css">
   <style>
-    /* ── Design tokens ── */
+    /* ── Design Tokens ── */
     :root {
       --primary: #0b4a6f;
       --primary-light: #607d8b;
@@ -23,7 +24,7 @@
 
     /* ── Base ── */
     body {
-      font-family: system-ui;
+      font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg);
       margin: 0;
       display: flex;
@@ -37,6 +38,7 @@
       background: var(--primary);
       color: white;
       text-align: center;
+      box-sizing: border-box;
     }
 
     main {
@@ -46,9 +48,10 @@
       grid-template-columns: 1fr 1.5fr;
       gap: 2rem;
       padding: 2rem;
+      box-sizing: border-box;
     }
 
-    /* ── Form controls ── */
+    /* ── Form Controls ── */
     input,
     select,
     button {
@@ -57,6 +60,7 @@
       margin: 0.5rem 0;
       border: 1px solid #ddd;
       border-radius: 6px;
+      box-sizing: border-box;
     }
 
     button {
@@ -65,7 +69,7 @@
       font-weight: 600;
       border: none;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.05s, filter 0.2s;
     }
 
     button:hover {
@@ -75,34 +79,54 @@
     button:active {
       transform: scale(0.95);
       filter: brightness(0.8);
-      transition: transform 0.05s;
     }
 
     button:disabled {
       background: #ccc;
       cursor: not-allowed;
+      transform: none;
     }
 
-    /* ── Layout helpers ── */
+    /* ── Layout Helpers ── */
     .left-col {
       display: flex;
       flex-direction: column;
       gap: 2rem;
     }
 
-    .row {
+    .row,
+    .row-tight,
+    .settings-row,
+    .classify-row,
+    .puzzles-header,
+    .puzzle-row {
       display: flex;
       gap: 0.5rem;
     }
 
-    .row-tight {
-      display: flex;
-      gap: 0.5rem;
+    .settings-row {
+      align-items: flex-end;
+      margin-bottom: 0.6rem;
+      gap: 0.6rem;
     }
 
-    .row-sm-gap {
-      display: flex;
+    .classify-row {
+      align-items: center;
+      margin-top: 0.6rem;
       gap: 0.3rem;
+    }
+
+    .puzzles-header {
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 2rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 2px solid #eee;
+    }
+
+    .puzzle-row {
+      justify-content: space-between;
+      align-items: center;
     }
 
     .grow-2 {
@@ -117,7 +141,7 @@
       flex: 0.5;
     }
 
-    /* ── Panel ── */
+    /* ── Panels ── */
     .panel {
       background: white;
       padding: 1.5rem;
@@ -127,12 +151,7 @@
       min-width: 0;
     }
 
-    /* ── Board ── */
-    #board {
-      width: 100%;
-      margin: 1rem 0;
-    }
-
+    /* ── Board & Eval ── */
     .board-container {
       display: flex;
       gap: 15px;
@@ -140,7 +159,10 @@
       margin: 1rem 0;
     }
 
-    /* ── Eval bar ── */
+    #board {
+      width: 100%;
+    }
+
     #eval-bar {
       width: 30px;
       background: #444;
@@ -148,6 +170,7 @@
       border: 1px solid #ccc;
       position: relative;
       overflow: hidden;
+      flex-shrink: 0;
     }
 
     #eval-fill {
@@ -167,7 +190,6 @@
       margin-top: 0.6rem;
       box-sizing: border-box;
       overflow-y: auto;
-      overflow-x: hidden;
       background: #222;
       color: #00ff00;
       font-family: 'Courier New', monospace;
@@ -178,20 +200,12 @@
       border-radius: 4px;
     }
 
-    /* ── Settings row ── */
-    .settings-row {
-      display: flex;
-      gap: 0.6rem;
-      align-items: flex-end;
-      margin-bottom: 0.6rem;
-    }
-
     .settings-row label {
       font-size: 0.8rem;
       font-weight: 700;
     }
 
-    /* ── Button colour variants ── */
+    /* ── Button Variants ── */
     .btn-reload {
       background: var(--primary-light);
     }
@@ -220,7 +234,6 @@
       background: var(--slate);
     }
 
-    /* ── Button size variants ── */
     .btn-sm {
       font-size: 0.75rem;
       padding: 0.6rem 0.2rem;
@@ -231,16 +244,15 @@
       padding: 4px;
     }
 
-    /* ── Board controls row ── */
-    .board-controls {
-      margin-top: 0.6rem;
+    .btn-delete {
+      width: auto;
+      padding: 4px 10px;
+      margin-left: 0.6rem;
+      background: var(--red);
     }
 
-    /* ── Classify row ── */
-    .classify-row {
-      display: flex;
-      gap: 0.3rem;
-      align-items: center;
+    /* ── Classify & Headers ── */
+    .board-controls {
       margin-top: 0.6rem;
     }
 
@@ -252,14 +264,12 @@
       margin-right: 5px;
     }
 
-    /* ── Hint box ── */
     #hint {
       background: #fff9c4;
       padding: 0.5rem;
       border-radius: 4px;
     }
 
-    /* ── Puzzle header card ── */
     #puzzle-header {
       display: none;
       padding: 1rem;
@@ -285,7 +295,6 @@
       color: #ffca28;
     }
 
-    /* ── Progress hint ── */
     .progress-game {
       font-weight: bold;
     }
@@ -294,16 +303,7 @@
       font-size: 0.85rem;
     }
 
-    /* ── Saved puzzles ── */
-    .puzzles-header {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      margin-top: 2rem;
-      padding-bottom: 0.6rem;
-      border-bottom: 2px solid #eee;
-    }
-
+    /* ── Saved Puzzles ── */
     .puzzles-header h3 {
       margin: 0;
       flex-grow: 1;
@@ -327,20 +327,8 @@
       background: #f9f9f9;
     }
 
-    .puzzle-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
     .puzzle-clickable {
       flex-grow: 1;
-    }
-
-    .badge {
-      font-size: 0.7rem;
-      font-weight: bold;
-      color: var(--primary);
     }
 
     .rank-badge {
@@ -355,13 +343,6 @@
     .type-icon {
       margin-right: 5px;
       font-size: 1.1rem;
-    }
-
-    .btn-delete {
-      width: auto;
-      padding: 4px 10px;
-      margin-left: 0.6rem;
-      background: var(--red);
     }
 
     /* ── Misc ── */
@@ -383,24 +364,20 @@
   </header>
 
   <main>
-    <!-- ── Left column ── -->
     <div class="left-col">
       <section class="panel">
-
-        <!-- Player / date selectors -->
         <div class="row">
           <input id="player" class="grow-2" type="text" value="calint">
-          <button id="btnReload" class="grow-half btn-reload">↻</button>
+          <button id="btnReload" class="grow-half btn-reload" aria-label="Reload Archives">↻</button>
           <select id="year" class="grow-1"></select>
           <select id="month" class="grow-1"></select>
         </div>
         <button id="btnLoad">Fetch Games</button>
         <select id="gameList" size="6"></select>
 
-        <!-- Analysis settings -->
         <div class="settings-row">
           <div class="grow-2">
-            <label>Lookahead:</label>
+            <label for="lookahead">Lookahead:</label>
             <select id="lookahead">
               <option value="5">5 moves</option>
               <option value="8">8 moves</option>
@@ -408,12 +385,11 @@
             </select>
           </div>
           <div class="grow-1">
-            <label>Margin (CP):</label>
+            <label for="margin">Margin (CP):</label>
             <input id="margin" type="number" value="250">
           </div>
         </div>
 
-        <!-- Action buttons -->
         <div class="row-tight">
           <button id="btnAnalyze" class="grow-2 btn-green">Analyze Selected</button>
           <button id="btnBatch" class="grow-2 btn-blue">Batch All</button>
@@ -425,10 +401,7 @@
       </section>
     </div>
 
-    <!-- ── Right column ── -->
     <section class="panel">
-
-      <!-- Puzzle header card -->
       <div id="puzzle-header">
         <div id="ph-players"></div>
         <div id="ph-meta"></div>
@@ -437,7 +410,6 @@
 
       <div id="hint">Select a puzzle...</div>
 
-      <!-- Board + eval bar -->
       <div class="board-container">
         <div id="eval-bar">
           <div id="eval-fill"></div>
@@ -445,7 +417,6 @@
         <div id="board"></div>
       </div>
 
-      <!-- Board controls -->
       <div class="row-tight board-controls">
         <button id="btnCopyFen" class="grow-1 btn-slate btn-sm">Copy FEN</button>
         <button id="btnPrev" class="grow-1 btn-sm">Back</button>
@@ -455,17 +426,15 @@
         <button id="btnSolution" class="grow-1 btn-orange btn-sm">Solution</button>
       </div>
 
-      <!-- Classify row -->
-      <div class="classify-row">
+      <div class="classify-row" id="classifyControls">
         <span class="classify-label">Classify:</span>
-        <button onclick="EventController.handleRank('1')" class="btn-rank btn-green  grow-1">Rotation 1</button>
-        <button onclick="EventController.handleRank('2')" class="btn-rank btn-blue   grow-1">Rotation 2</button>
-        <button onclick="EventController.handleRank('3')" class="btn-rank btn-orange grow-1">Basic</button>
-        <button onclick="EventController.handleRank('4')" class="btn-rank btn-red    grow-1">Overtrained</button>
-        <button onclick="EventController.handleRank('5')" class="btn-rank btn-black  grow-1">Too complex</button>
+        <button data-rank="1" class="btn-rank btn-green grow-1">Rotation 1</button>
+        <button data-rank="2" class="btn-rank btn-blue grow-1">Rotation 2</button>
+        <button data-rank="3" class="btn-rank btn-orange grow-1">Basic</button>
+        <button data-rank="4" class="btn-rank btn-red grow-1">Overtrained</button>
+        <button data-rank="5" class="btn-rank btn-black grow-1">Too complex</button>
       </div>
 
-      <!-- Saved puzzles -->
       <div class="puzzles-header">
         <h3>Saved Puzzles</h3>
         <select id="sortPuzzles" class="filter-select">
@@ -503,7 +472,6 @@
     };
 
     // ── 1. STATE & DOM CACHE ──────────────────────────────────────────────────
-
     const State = {
       engine: null,
       board: null,
@@ -514,16 +482,20 @@
       isAnalyzing: false
     };
 
-    const DOM = {
-      inputs: {
+    const DOM = {};
+
+    const initDOM = () => {
+      DOM.inputs = {
         player: document.getElementById('player'),
         year: document.getElementById('year'),
         month: document.getElementById('month'),
         lookahead: document.getElementById('lookahead'),
         margin: document.getElementById('margin'),
-        gameList: document.getElementById('gameList')
-      },
-      buttons: {
+        gameList: document.getElementById('gameList'),
+        rankFilter: document.getElementById('rankFilter'),
+        sortPuzzles: document.getElementById('sortPuzzles')
+      };
+      DOM.buttons = {
         reload: document.getElementById('btnReload'),
         load: document.getElementById('btnLoad'),
         analyze: document.getElementById('btnAnalyze'),
@@ -536,8 +508,8 @@
         reset: document.getElementById('btnReset'),
         solution: document.getElementById('btnSolution'),
         copyFen: document.getElementById('btnCopyFen')
-      },
-      display: {
+      };
+      DOM.display = {
         log: document.getElementById('log'),
         hint: document.getElementById('hint'),
         evalFill: document.getElementById('eval-fill'),
@@ -545,12 +517,12 @@
         phPlayers: document.getElementById('ph-players'),
         phMeta: document.getElementById('ph-meta'),
         phEval: document.getElementById('ph-eval'),
-        puzzles: document.getElementById('puzzles')
-      }
+        puzzles: document.getElementById('puzzles'),
+        classifyControls: document.getElementById('classifyControls')
+      };
     };
 
     // ── 2. STORAGE CONTROLLER ─────────────────────────────────────────────────
-
     const StorageController = {
       KEY: 'chess_puzzles',
 
@@ -617,24 +589,37 @@
     };
 
     // ── 3. API CONTROLLER ─────────────────────────────────────────────────────
-
     const ApiController = {
       fetchArchives: async (user) => {
-        const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
-        const data = await res.json();
-        return data.archives
-          .map(url => { const p = url.split('/'); return { year: p[p.length - 2], month: p[p.length - 1] }; })
-          .sort((a, b) => b.year - a.year || b.month - a.month);
+        try {
+          const res = await fetch(`https://api.chess.com/pub/player/${user}/games/archives`);
+          if (!res.ok) throw new Error("Failed to fetch archives");
+          const data = await res.json();
+          return data.archives
+            .map(url => {
+              const p = url.split('/');
+              return { year: p[p.length - 2], month: p[p.length - 1] };
+            })
+            .sort((a, b) => b.year - a.year || b.month - a.month);
+        } catch (error) {
+          UIController.log(`Error fetching archives: ${error.message}`);
+          return [];
+        }
       },
 
       fetchGames: async (user, year, month) => {
-        const res = await fetch(`https://api.chess.com/pub/player/${user}/games/${year}/${month}`);
-        return res.json();
+        try {
+          const res = await fetch(`https://api.chess.com/pub/player/${user}/games/${year}/${month}`);
+          if (!res.ok) throw new Error("Failed to fetch games");
+          return await res.json();
+        } catch (error) {
+          UIController.log(`Error fetching games: ${error.message}`);
+          return { games: [] };
+        }
       }
     };
 
     // ── 4. ENGINE CONTROLLER ──────────────────────────────────────────────────
-
     const EngineController = {
       getEngine: async () => {
         if (!State.engine) State.engine = new Worker("lib/stockfish.js");
@@ -650,23 +635,26 @@
           let lastPv = "";
 
           const onMsg = (e) => {
-            if (e.data.includes("score")) {
-              const cpMatch = e.data.match(/score cp (-?\d+)/);
-              if (cpMatch) lastScore = parseInt(cpMatch[1]) * (side === 'b' ? -1 : 1);
+            const data = e.data;
+            if (data.includes("score")) {
+              const cpMatch = data.match(/score cp (-?\d+)/);
+              if (cpMatch) {
+                lastScore = parseInt(cpMatch[1], 10) * (side === 'b' ? -1 : 1);
+              }
 
-              const mateMatch = e.data.match(/score mate (-?\d+)/);
+              const mateMatch = data.match(/score mate (-?\d+)/);
               if (mateMatch) {
-                const mateIn = parseInt(mateMatch[1]);
+                const mateIn = parseInt(mateMatch[1], 10);
                 const mateValue = mateIn === 0 ? 100000 : 20000;
                 lastScore = (mateIn >= 0 ? mateValue : -mateValue) * (side === 'b' ? -1 : 1);
               }
 
-              const pvMatch = e.data.match(/ pv (.+)/);
+              const pvMatch = data.match(/ pv (.+)/);
               if (pvMatch) lastPv = pvMatch[1];
             }
 
-            if (e.data.startsWith("bestmove")) {
-              const move = e.data.split(" ")[1];
+            if (data.startsWith("bestmove")) {
+              const move = data.split(" ")[1];
               engine.removeEventListener("message", onMsg);
               resolve({ score: lastScore, best: move === "(none)" ? null : move, pv: lastPv });
             }
@@ -680,7 +668,6 @@
     };
 
     // ── 5. UI CONTROLLER ──────────────────────────────────────────────────────
-
     const UIController = {
       log: (msg, isHeader = false) => {
         const div = document.createElement('div');
@@ -700,8 +687,7 @@
         const interactables = [
           DOM.buttons.analyze, DOM.buttons.batch, DOM.buttons.load, DOM.buttons.reload,
           DOM.buttons.prev, DOM.buttons.hint, DOM.buttons.next, DOM.buttons.solution,
-          DOM.buttons.clearLog,
-          DOM.inputs.player, DOM.inputs.year, DOM.inputs.month,
+          DOM.buttons.clearLog, DOM.inputs.player, DOM.inputs.year, DOM.inputs.month,
           DOM.inputs.gameList, DOM.inputs.lookahead, DOM.inputs.margin
         ];
 
@@ -725,8 +711,8 @@
       },
 
       renderSavedPuzzles: () => {
-        const filterValue = document.getElementById('rankFilter')?.value || "All";
-        const sortValue = document.getElementById('sortPuzzles')?.value || "dateDesc";
+        const filterValue = DOM.inputs.rankFilter?.value || "All";
+        const sortValue = DOM.inputs.sortPuzzles?.value || "dateDesc";
         const ratingOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, undefined: 6 };
 
         let items = StorageController.getAll().filter(p => {
@@ -758,13 +744,14 @@
           const div = document.createElement('div');
           div.className = 'puzzle-item';
           div.style.opacity = p.solved ? "0.6" : "1";
+
           div.innerHTML = `
             <div class="puzzle-row">
-              <div class="puzzle-clickable" onclick="EventController.loadPuzzleById(${p.id})">
+              <div class="puzzle-clickable" data-id="${p.id}">
                 <strong>${typeIcon}${p.players}</strong> ${p.solved ? '✅' : ''} ${rankBadge}<br>
                 <small>${p.gain} | ${p.date} (${p.depth}d)</small>
               </div>
-              <button onclick="StorageController.delete(${p.id})" class="btn-delete">Delete</button>
+              <button data-delete-id="${p.id}" class="btn-delete">Delete</button>
             </div>`;
           DOM.display.puzzles.appendChild(div);
         });
@@ -801,7 +788,6 @@
     };
 
     // ── 6. GAME LOGIC ─────────────────────────────────────────────────────────
-
     const GameLogic = {
       convertPvToAlgebraic: (fen, pv) => {
         const temp = new Chess(fen);
@@ -839,15 +825,19 @@
           pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
           onDrop: (s, t) => {
             const history = State.trainingGame.history().length;
-            const move = new Chess(State.trainingGame.fen()).move({ from: s, to: t, promotion: 'q' });
+            const tempChess = new Chess(State.trainingGame.fen());
+            const move = tempChess.move({ from: s, to: t, promotion: 'q' });
+
             if (!move || move.san !== sol[history]) return 'snapback';
 
             State.trainingGame.move(move.san);
             const nextIdx = State.trainingGame.history().length;
+
             if (State.trainingGame.game_over() || nextIdx >= sol.length) {
               UIController.updateTrainingStatus();
               return;
             }
+
             setTimeout(() => {
               State.trainingGame.move(sol[nextIdx]);
               UIController.updateTrainingStatus();
@@ -856,7 +846,7 @@
         });
 
         UIController.updateTrainingStatus();
-        document.getElementById('board').scrollIntoView({ block: 'center' });
+        document.getElementById('board').scrollIntoView({ behavior: 'smooth', block: 'center' });
       },
 
       runAnalysis: async (isBatch = false, gameIdx = 1, totalGames = 1) => {
@@ -868,8 +858,8 @@
 
         try {
           const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
-          const currentDepth = parseInt(DOM.inputs.lookahead.value || 12);
-          const currentMargin = parseInt(DOM.inputs.margin.value);
+          const currentDepth = parseInt(DOM.inputs.lookahead.value || 12, 10);
+          const currentMargin = parseInt(DOM.inputs.margin.value, 10);
           const playerDisplay = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
 
           UIController.log("------------------------------------------", true);
@@ -928,6 +918,7 @@
             const gap = (turn === 'white' ? 1 : -1) * (analysis.score - post.score);
             const playerEvalBefore = (turn === 'white' ? 1 : -1) * analysis.score;
             const playerEvalAfter = (turn === 'white' ? 1 : -1) * post.score;
+
             const isBlunder = gap >= currentMargin;
             const isOpportunity = playerEvalBefore >= currentMargin && gap >= currentMargin;
 
@@ -971,8 +962,8 @@
             UIController.toggleAnalysisLock(false);
 
             const gameId = DOM.inputs.gameList.selectedOptions[0]?.dataset.gameId;
-            const depth = parseInt(DOM.inputs.lookahead.value || 12);
-            const margin = parseInt(DOM.inputs.margin.value);
+            const depth = parseInt(DOM.inputs.lookahead.value || 12, 10);
+            const margin = parseInt(DOM.inputs.margin.value, 10);
             const foundCount = StorageController.getAll()
               .filter(p => p.gameId === gameId && p.gain !== null).length;
 
@@ -989,33 +980,54 @@
     };
 
     // ── 7. EVENT CONTROLLER ───────────────────────────────────────────────────
-
     const EventController = {
       init: () => {
+        initDOM();
+
         State.board = Chessboard('board', {
           position: 'start',
           pieceTheme: 'img/chesspieces/wikipedia/{piece}.png'
         });
 
-        DOM.buttons.reload.onclick = EventController.handleLoadArchives;
-        DOM.buttons.load.onclick = EventController.handleLoadGames;
-        DOM.buttons.analyze.onclick = EventController.handleAnalyze;
-        DOM.buttons.batch.onclick = EventController.handleBatch;
-        DOM.buttons.stop.onclick = () => {
+        DOM.buttons.reload.addEventListener('click', EventController.handleLoadArchives);
+        DOM.buttons.load.addEventListener('click', EventController.handleLoadGames);
+        DOM.buttons.analyze.addEventListener('click', EventController.handleAnalyze);
+        DOM.buttons.batch.addEventListener('click', EventController.handleBatch);
+        DOM.buttons.stop.addEventListener('click', () => {
           State.isBatchRunning = false;
           State.isAnalyzing = false;
           UIController.log("Stopping...");
-        };
-        DOM.buttons.clearLog.onclick = UIController.clearLog;
-        DOM.buttons.prev.onclick = EventController.handleStepBack;
-        DOM.buttons.next.onclick = EventController.handleStepForward;
-        DOM.buttons.hint.onclick = EventController.handleShowHint;
-        DOM.buttons.reset.onclick = EventController.handleResetPuzzle;
-        DOM.buttons.solution.onclick = EventController.handleShowSolution;
-        DOM.buttons.copyFen.onclick = EventController.handleCopyFen;
+        });
+        DOM.buttons.clearLog.addEventListener('click', UIController.clearLog);
+        DOM.buttons.prev.addEventListener('click', EventController.handleStepBack);
+        DOM.buttons.next.addEventListener('click', EventController.handleStepForward);
+        DOM.buttons.hint.addEventListener('click', EventController.handleShowHint);
+        DOM.buttons.reset.addEventListener('click', EventController.handleResetPuzzle);
+        DOM.buttons.solution.addEventListener('click', EventController.handleShowSolution);
+        DOM.buttons.copyFen.addEventListener('click', EventController.handleCopyFen);
 
-        document.getElementById('rankFilter').onchange = UIController.renderSavedPuzzles;
-        document.getElementById('sortPuzzles').onchange = UIController.renderSavedPuzzles;
+        DOM.inputs.rankFilter.addEventListener('change', UIController.renderSavedPuzzles);
+        DOM.inputs.sortPuzzles.addEventListener('change', UIController.renderSavedPuzzles);
+
+        // Delegated events for dynamic puzzle list
+        DOM.display.puzzles.addEventListener('click', (e) => {
+          const deleteBtn = e.target.closest('.btn-delete');
+          const clickable = e.target.closest('.puzzle-clickable');
+
+          if (deleteBtn) {
+            StorageController.delete(deleteBtn.dataset.deleteId);
+          } else if (clickable) {
+            const id = isNaN(clickable.dataset.id) ? clickable.dataset.id : Number(clickable.dataset.id);
+            EventController.loadPuzzleById(id);
+          }
+        });
+
+        // Delegated events for rank classification
+        DOM.display.classifyControls.addEventListener('click', (e) => {
+          if (e.target.tagName === 'BUTTON' && e.target.dataset.rank) {
+            EventController.handleRank(e.target.dataset.rank);
+          }
+        });
 
         EventController.handleLoadArchives();
         UIController.renderSavedPuzzles();
@@ -1027,6 +1039,7 @@
 
         const archives = await ApiController.fetchArchives(user);
         DOM.inputs.year.innerHTML = "";
+
         [...new Set(archives.map(a => a.year))].forEach(y => DOM.inputs.year.add(new Option(y, y)));
 
         DOM.inputs.year.onchange = () => {
@@ -1043,6 +1056,8 @@
           DOM.inputs.player.value, DOM.inputs.year.value, DOM.inputs.month.value
         );
         DOM.inputs.gameList.innerHTML = "";
+
+        if (!data.games) return;
 
         data.games.reverse().forEach((g, i) => {
           const gameId = `${g.white.username}-${g.black.username}-${g.end_time}`;
@@ -1065,8 +1080,8 @@
         const sel = DOM.inputs.gameList.selectedOptions[0];
         if (!sel) return;
 
-        const depth = parseInt(DOM.inputs.lookahead.value || 12);
-        const margin = parseInt(DOM.inputs.margin.value);
+        const depth = parseInt(DOM.inputs.lookahead.value || 12, 10);
+        const margin = parseInt(DOM.inputs.margin.value, 10);
         const saved = StorageController.findPuzzle(sel.dataset.gameId, depth, margin);
 
         if (saved) {
@@ -1133,8 +1148,7 @@
         const move = temp.move(sol[cur]);
         if (move) {
           const pieceNames = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
-          DOM.display.hint.innerHTML =
-            `<strong>Hint:</strong> Move the <u>${pieceNames[move.piece] || 'piece'}</u> on <strong>${move.from}</strong>`;
+          DOM.display.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${pieceNames[move.piece] || 'piece'}</u> on <strong>${move.from}</strong>`;
         }
       },
 
@@ -1205,7 +1219,7 @@
       }
     };
 
-    window.onload = EventController.init;
+    document.addEventListener('DOMContentLoaded', EventController.init);
   </script>
 </body>
 
