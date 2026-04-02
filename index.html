@@ -398,6 +398,9 @@
 
         <div id="log">Ready.</div>
         <button id="btnClearLog">Clear Log</button>
+        <button id="btnDownloadDatabase">Download Database</button>
+        <input type="file" id="uploadDatabase" style="display: none;" accept=".json">
+        <button id="btnUploadPuzzles">Upload Database</button>
       </section>
     </div>
 
@@ -506,6 +509,7 @@
         batch: document.getElementById('btnBatch'),
         stop: document.getElementById('btnStop'),
         clearLog: document.getElementById('btnClearLog'),
+        downloadDatabase: document.getElementById('btnDownloadDatabase'),
         prev: document.getElementById('btnPrev'),
         next: document.getElementById('btnNext'),
         hint: document.getElementById('btnHint'),
@@ -1024,6 +1028,7 @@
           UIController.log("Stopping...");
         });
         DOM.buttons.clearLog.addEventListener('click', UIController.clearLog);
+        DOM.buttons.downloadDatabase.addEventListener('click', EventController.handleDownloadDatabase);
         DOM.buttons.prev.addEventListener('click', EventController.handleStepBack);
         DOM.buttons.next.addEventListener('click', EventController.handleStepForward);
         DOM.buttons.hint.addEventListener('click', EventController.handleShowHint);
@@ -1033,6 +1038,11 @@
 
         DOM.inputs.rankFilter.addEventListener('change', UIController.renderSavedPuzzles);
         DOM.inputs.sortPuzzles.addEventListener('change', UIController.renderSavedPuzzles);
+
+        const btnUpload = document.getElementById('btnUploadPuzzles');
+        const fileInput = document.getElementById('uploadDatabase');
+        btnUpload.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', EventController.handleUploadDatabase);
 
         // Delegated events for dynamic puzzle list
         DOM.display.puzzles.addEventListener('click', (e) => {
@@ -1241,10 +1251,62 @@
           btn.style.background = "#2e7d32";
           setTimeout(() => { btn.textContent = orig; btn.style.background = ""; }, 2000);
         });
+      },
+
+      handleDownloadDatabase: () => {
+        const data = localStorage.getItem('chess_puzzles');
+        if (!data) return console.error("No data found to backup!");
+
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = `blindspot_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        link.click();
+
+        URL.revokeObjectURL(url);
+        console.log("Backup file created!");
       }
     };
 
-    document.addEventListener('DOMContentLoaded', EventController.init);
+    handleUploadDatabase: (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+
+          if (!Array.isArray(importedData)) {
+            throw new Error("Invalid format: Expected an array of puzzles.");
+          }
+
+          // Merge logic: Combine existing and new, keeping unique IDs
+          const existingData = StorageController.getAll();
+          const existingIds = new Set(existingData.map(p => p.id));
+
+          const newItems = importedData.filter(p => !existingIds.has(p.id));
+          const mergedData = [...existingData, ...newItems];
+
+          localStorage.setItem(StorageController.KEY, JSON.stringify(mergedData));
+
+          UIController.log(`Successfully imported ${newItems.length} new puzzles!`, true);
+          UIController.renderSavedPuzzles();
+          UIController.updateGameListStatus();
+
+          // Reset input so the same file can be uploaded again if needed
+          event.target.value = '';
+        } catch (err) {
+          UIController.log(`Upload failed: ${err.message}`);
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    },
+
+      document.addEventListener('DOMContentLoaded', EventController.init);
   </script>
 </body>
 

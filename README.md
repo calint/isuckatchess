@@ -68,6 +68,12 @@ Switch your filter back to Uncategorized and repeat the process from Step 1.
 Once all your active puzzles have been moved into the next Rotation batch,
 filter for that new rotation and continue your training.
 
+## step 7, advancing
+
+After some iteration of understanding the rotation puzzles review the Too
+Complex 1 puzzles and some make more sense now. Move those to next rotation the
+others to Too Complex 2.
+
 ## openings
 
 At this level, many opponents rely on "system" openings they know by heart.
