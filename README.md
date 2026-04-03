@@ -68,6 +68,10 @@ Switch your filter back to Uncategorized and repeat the process from Step 1.
 Once all your active puzzles have been moved into the next Rotation batch,
 filter for that new rotation and continue your training.
 
+Eventually, most puzzles will become Overtrained. Periodically scan this
+category; if the first move no longer immediately "pops" into your mind from
+memory, move the puzzle back into an active Rotation.
+
 ## step 7, advancing
 
 Review your Too Complex 1 puzzles and move any that offer a now-understandable
@@ -84,7 +88,7 @@ opponent has a well prepared opening.
 
 If you get crushed early, watch a quick video afterward to learn the
 counter-ideas. Memorizing a few key responses to the common openings you face
-will makes a difference.
+will make a difference.
 
 Watching videos about openings is the more relaxed part of the training. Focus
 on the core ideas instead of memorizing moves. Ideas are easier to remember, and
