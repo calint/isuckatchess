@@ -19,7 +19,7 @@ opportunity or made a blunder.
 
 * enter your chess.com username in the field
 * load years and months of available archives
-* fetch games for specified month
+* fetch games for specified year and month
 * click Batch All to analyze your games
 
 The engine will process the games while displaying a progress animation. Once
