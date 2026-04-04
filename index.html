@@ -21,7 +21,6 @@
       --bg: #f2f4f7;
     }
 
-    /* ── Base ── */
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg);
@@ -50,7 +49,6 @@
       box-sizing: border-box;
     }
 
-    /* ── Form Controls ── */
     input,
     select,
     button {
@@ -86,7 +84,6 @@
       transform: none;
     }
 
-    /* ── Layout ── */
     .left-col {
       display: flex;
       flex-direction: column;
@@ -140,7 +137,6 @@
       flex: 0.5;
     }
 
-    /* ── Panels ── */
     .panel {
       background: white;
       padding: 1.5rem;
@@ -150,7 +146,6 @@
       min-width: 0;
     }
 
-    /* ── Board & Eval ── */
     .board-container {
       display: flex;
       gap: 1rem;
@@ -181,7 +176,6 @@
       transition: height 0.3s ease;
     }
 
-    /* ── Log ── */
     #log {
       width: 100%;
       height: 20rem;
@@ -204,7 +198,6 @@
       font-weight: 700;
     }
 
-    /* ── Button Variants ── */
     .btn-reload {
       background: var(--primary-light);
     }
@@ -251,7 +244,6 @@
       background: var(--red);
     }
 
-    /* ── Board Controls ── */
     .board-controls {
       margin-top: 0.6rem;
     }
@@ -264,7 +256,6 @@
       margin-right: 0.3rem;
     }
 
-    /* ── Puzzle Header ── */
     #hint {
       background: #fff9c4;
       padding: 0.5rem;
@@ -309,7 +300,6 @@
       font-weight: bold;
     }
 
-    /* ── Saved Puzzles ── */
     .puzzles-header h3 {
       margin: 0;
       flex-grow: 1;
@@ -362,7 +352,6 @@
       margin-right: 0.6rem;
     }
 
-    /* ── Misc ── */
     #btnClearLog {
       background: var(--slate);
       margin-top: 0.3rem;
@@ -488,17 +477,13 @@
   <script src="lib/chessboard-1.0.0.min.js"></script>
   <script src="lib/chess.min.js"></script>
   <script>
-    const CATEGORY_NAMES = { '1': 'Rotation 1', '2': 'Rotation 2', '3': 'Overtrained 1', '4': 'Overtrained 2', '5': 'Too Complex 1', '6': 'Too Complex 2' };
+    const CATEGORIES = { '1': 'Rotation 1', '2': 'Rotation 2', '3': 'Overtrained 1', '4': 'Overtrained 2', '5': 'Too Complex 1', '6': 'Too Complex 2' };
 
     // ── STATE & DOM ───────────────────────────────────────────────────────────
     const State = {
-      engine: null,
-      board: null,
-      currentPuzzle: null,
+      engine: null, board: null, currentPuzzle: null,
       trainingGame: new Chess(),
-      isBatchRunning: false,
-      currentAnimationId: 0,
-      isAnalyzing: false
+      isBatchRunning: false, isAnalyzing: false, currentAnimationId: 0
     };
 
     const DOM = {};
@@ -507,16 +492,15 @@
     const initDOM = () => {
       DOM.inputs = {
         player: $('player'), year: $('year'), month: $('month'),
-        lookahead: $('lookahead'), margin: $('margin'),
-        gameList: $('gameList'), rankFilter: $('rankFilter'),
-        sortPuzzles: $('sortPuzzles')
+        lookahead: $('lookahead'), margin: $('margin'), gameList: $('gameList'),
+        rankFilter: $('rankFilter'), sortPuzzles: $('sortPuzzles'), uploadDb: $('uploadDatabase')
       };
       DOM.buttons = {
         reload: $('btnReload'), load: $('btnLoad'), analyze: $('btnAnalyze'),
         batch: $('btnBatch'), stop: $('btnStop'), clearLog: $('btnClearLog'),
-        downloadDatabase: $('btnDownloadDatabase'), prev: $('btnPrev'),
-        next: $('btnNext'), hint: $('btnHint'), reset: $('btnReset'),
-        solution: $('btnSolution'), copyFen: $('btnCopyFen')
+        downloadDb: $('btnDownloadDatabase'), uploadDb: $('btnUploadPuzzles'),
+        prev: $('btnPrev'), next: $('btnNext'), hint: $('btnHint'),
+        reset: $('btnReset'), solution: $('btnSolution'), copyFen: $('btnCopyFen')
       };
       DOM.display = {
         log: $('log'), hint: $('hint'), evalFill: $('eval-fill'),
@@ -526,6 +510,27 @@
       };
     };
 
+    // ── TEMPLATES ─────────────────────────────────────────────────────────────
+    const TemplateUI = {
+      puzzleItem(p) {
+        const badge = p.rating ? `<span class="rank-badge">${CATEGORIES[p.rating] || p.rating}</span>` : "";
+        const isBlunder = p.reason === 'BLINDSPOT';
+        const icon = isBlunder ? '[??]' : '[!]';
+        const title = isBlunder ? 'Blunder' : 'Missed Opportunity';
+
+        return `
+          <div class="puzzle-item ${p.solved ? 'solved' : ''}">
+            <div class="puzzle-row">
+              <div class="puzzle-clickable" data-id="${p.id}">
+                <strong><span class="type-icon" title="${title}">${icon}</span>${p.players}</strong>${badge}<br>
+                <small>${p.gain} | ${p.date} (${p.depth}d)</small>
+              </div>
+              <button data-delete-id="${p.id}" class="btn-delete">Delete</button>
+            </div>
+          </div>`;
+      }
+    };
+
     // ── STORAGE ───────────────────────────────────────────────────────────────
     const StorageController = {
       KEY: 'chess_puzzles',
@@ -533,40 +538,43 @@
       getAll: () => JSON.parse(localStorage.getItem(StorageController.KEY) || '[]'),
 
       _persist(items) {
-        localStorage.setItem(StorageController.KEY, JSON.stringify(items));
+        localStorage.setItem(this.KEY, JSON.stringify(items));
         UIController.renderSavedPuzzles();
         UIController.updateGameListStatus();
       },
 
       save(puzzle) {
-        const items = this.getAll().filter(x => x.id !== puzzle.id);
+        puzzle.id = String(puzzle.id); // Ensure ID is standard string
+        const items = this.getAll().filter(x => String(x.id) !== puzzle.id);
         items.push(puzzle);
         this._persist(items);
       },
 
-      _find: (gameId, depth, margin, flag) =>
+      _find: (gameId, depth, margin, isRecordCheck) =>
         StorageController.getAll().find(p =>
           p.gameId === gameId && p.depth === depth && p.margin === margin &&
-          (flag === 'puzzle' ? p.gain !== null && !p.isCompletionRecord : p.isCompletionRecord)
+          (isRecordCheck ? p.isCompletionRecord : (p.gain !== null && !p.isCompletionRecord))
         ),
 
-      findPuzzle: (id, d, m) => StorageController._find(id, d, m, 'puzzle'),
-      findRecord: (id, d, m) => StorageController._find(id, d, m, 'record'),
+      findPuzzle: (id, d, m) => StorageController._find(id, d, m, false),
+      findRecord: (id, d, m) => StorageController._find(id, d, m, true),
 
       delete(id) {
-        const targetId = isNaN(id) ? id : Number(id);
+        const targetId = String(id);
         let items = this.getAll();
-        const puzzle = items.find(p => p.id === targetId);
+        const puzzle = items.find(p => String(p.id) === targetId);
         if (!puzzle) return;
 
-        items = items.filter(p => p.id !== targetId);
+        items = items.filter(p => String(p.id) !== targetId);
+
+        // Clean up metadata record if no puzzles remain for this game
         if (!items.some(p => p.gameId === puzzle.gameId && p.gain !== null)) {
           items = items.filter(p => p.gameId !== puzzle.gameId);
         }
 
         this._persist(items);
 
-        if (State.currentPuzzle?.id === targetId) {
+        if (String(State.currentPuzzle?.id) === targetId) {
           State.currentPuzzle = null;
           State.board.start();
           DOM.display.hint.textContent = "Select a puzzle...";
@@ -576,7 +584,7 @@
 
       markSolved(id) {
         const items = this.getAll();
-        const p = items.find(x => x.id === id);
+        const p = items.find(x => String(x.id) === String(id));
         if (p && !p.solved) {
           p.solved = true;
           this._persist(items);
@@ -585,12 +593,13 @@
       },
 
       rank(id, rating) {
+        if (!id) return;
         const items = this.getAll();
-        const p = items.find(x => x.id === id);
+        const p = items.find(x => String(x.id) === String(id));
         if (p) {
           p.rating = rating;
           this._persist(items);
-          UIController.log(`${p.players} → ${CATEGORY_NAMES[rating] || rating}`);
+          UIController.log(`${p.players} → ${CATEGORIES[rating] || rating}`);
         }
       }
     };
@@ -610,15 +619,18 @@
 
       async fetchArchives(user) {
         const data = await this._fetch(`https://api.chess.com/pub/player/${user}/games/archives`, 'Failed to fetch archives');
-        if (!data) return [];
+        if (!data || !data.archives) return null;
+
+        // Restore the logic that turns the raw URLs into { year, month } objects
         return data.archives
-          .map(url => { const p = url.split('/'); return { year: p[p.length - 2], month: p[p.length - 1] }; })
+          .map(url => {
+            const parts = url.split('/');
+            return { year: parts[parts.length - 2], month: parts[parts.length - 1] };
+          })
           .sort((a, b) => b.year - a.year || b.month - a.month);
       },
 
-      async fetchGames(user, year, month) {
-        return await this._fetch(`https://api.chess.com/pub/player/${user}/games/${year}/${month}`, 'Failed to fetch games') || { games: [] };
-      }
+      fetchGames: async (user, year, month) => await ApiController._fetch(`https://api.chess.com/pub/player/${user}/games/${year}/${month}`, 'Failed to fetch games')
     };
 
     // ── ENGINE ────────────────────────────────────────────────────────────────
@@ -630,25 +642,25 @@
 
       evaluate(fen, depth) {
         const engine = this.getEngine();
-        const side = fen.split(" ")[1];
+        const sideMultiplier = fen.split(" ")[1] === 'b' ? -1 : 1;
 
         return new Promise(resolve => {
           let lastScore = 0, lastPv = "";
 
           const onMsg = ({ data }) => {
             if (data.includes("score")) {
-              const cp = data.match(/score cp (-?\d+)/);
-              if (cp) lastScore = parseInt(cp[1], 10) * (side === 'b' ? -1 : 1);
+              const cpMatch = data.match(/score cp (-?\d+)/);
+              if (cpMatch) lastScore = parseInt(cpMatch[1], 10) * sideMultiplier;
 
-              const mate = data.match(/score mate (-?\d+)/);
-              if (mate) {
-                const n = parseInt(mate[1], 10);
-                lastScore = (n >= 0 ? 20000 : -20000) * (side === 'b' ? -1 : 1);
-                if (n === 0) lastScore = 100000;
+              const mateMatch = data.match(/score mate (-?\d+)/);
+              if (mateMatch) {
+                const moves = parseInt(mateMatch[1], 10);
+                lastScore = (moves >= 0 ? 20000 : -20000) * sideMultiplier;
+                if (moves === 0) lastScore = 100000;
               }
 
-              const pv = data.match(/ pv (.+)/);
-              if (pv) lastPv = pv[1];
+              const pvMatch = data.match(/ pv (.+)/);
+              if (pvMatch) lastPv = pvMatch[1];
             }
 
             if (data.startsWith("bestmove")) {
@@ -669,22 +681,22 @@
     const UIController = {
       log(msg, isHeader = false) {
         const div = document.createElement('div');
-        if (isHeader) div.style.color = '#fff';
+        div.style.color = isHeader ? '#fff' : '';
         div.textContent = `> ${msg}`;
         DOM.display.log.appendChild(div);
         DOM.display.log.scrollTop = DOM.display.log.scrollHeight;
       },
 
-      clearLog: () => { DOM.display.log.innerHTML = "Ready."; },
-
-      updateEvalBar: cp => {
-        DOM.display.evalFill.style.height = `${Math.max(0, Math.min(100, 50 + cp / 40))}%`;
+      clearLog() {
+        DOM.display.log.innerHTML = 'Ready.';
       },
+
+      updateEvalBar: cp => DOM.display.evalFill.style.height = `${Math.max(0, Math.min(100, 50 + cp / 40))}%`,
 
       toggleAnalysisLock(isLocked) {
         const display = isLocked ? 'none' : 'block';
         Object.values(DOM.buttons).forEach(btn => { if (btn !== DOM.buttons.stop) btn.style.display = display; });
-        Object.values(DOM.inputs).forEach(input => { input.style.display = display; });
+        Object.values(DOM.inputs).forEach(input => { if (input === DOM.inputs.uploadDb) return; input.style.display = display; });
         document.querySelectorAll('.settings-row label').forEach(l => l.style.display = display);
 
         DOM.buttons.stop.style.display = isLocked ? 'block' : 'none';
@@ -696,7 +708,8 @@
         Array.from(DOM.inputs.gameList.options).forEach(opt => {
           const { gameId, date, whiteName, blackName, wR, bR } = opt.dataset;
           const record = puzzles.find(p => p.gameId === gameId);
-          opt.text = `${record ? (record.gain ? '+ ' : '- ') : ''}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
+          const status = record ? (record.gain ? '+ ' : '- ') : '';
+          opt.text = `${status}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
         });
       },
 
@@ -707,52 +720,38 @@
 
         let items = StorageController.getAll().filter(p => {
           if (p.isCompletionRecord || p.gain === null) return false;
-          if (filter === "All") return true;
           if (filter === "Unrated") return !p.rating;
-          return p.rating === filter;
+          return filter === "All" || p.rating === filter;
         });
 
         DOM.display.puzzleCount.textContent = `(${items.length})`;
 
         items.sort((a, b) => {
-          const gain = x => parseInt(x.gain) || 0;
+          const gainA = parseInt(a.gain) || 0;
+          const gainB = parseInt(b.gain) || 0;
+
           if (sort === "rating") {
             const diff = (ratingOrder[a.rating] || 6) - (ratingOrder[b.rating] || 6);
-            return diff !== 0 ? diff : gain(b) - gain(a);
+            return diff !== 0 ? diff : gainB - gainA;
           }
-          if (sort === "severity") return gain(b) - gain(a);
+          if (sort === "severity") return gainB - gainA;
           if (sort === "dateAsc") return new Date(a.date) - new Date(b.date);
           return new Date(b.date) - new Date(a.date);
         });
 
-        DOM.display.puzzles.innerHTML = items.map(p => {
-          const badge = p.rating ? `<span class="rank-badge">${CATEGORY_NAMES[p.rating] || p.rating}</span>` : "";
-          const icon = p.reason === 'BLINDSPOT' ? '[??]' : '[!]';
-          const title = p.reason === 'BLINDSPOT' ? 'Blunder' : 'Missed Opportunity';
-
-          return `
-            <div class="puzzle-item ${p.solved ? 'solved' : ''}">
-              <div class="puzzle-row">
-                <div class="puzzle-clickable" data-id="${p.id}">
-                  <strong><span class="type-icon" title="${title}">${icon}</span>${p.players}</strong>${badge}<br>
-                  <small>${p.gain} | ${p.date} (${p.depth}d)</small>
-                </div>
-                <button data-delete-id="${p.id}" class="btn-delete">Delete</button>
-              </div>
-            </div>`;
-        }).join('');
+        DOM.display.puzzles.innerHTML = items.map(TemplateUI.puzzleItem).join('');
       },
 
       async updateTrainingStatus() {
         const p = State.currentPuzzle;
         if (!p) return;
 
-        const complete = () => {
+        const setComplete = () => {
           DOM.display.hint.innerHTML = "<span class='text-success'>✔ Puzzle Complete!</span>";
           StorageController.markSolved(p.id);
         };
 
-        if (State.trainingGame.game_over()) return complete();
+        if (State.trainingGame.game_over()) return setComplete();
 
         State.board.position(State.trainingGame.fen());
         const { score } = await EngineController.evaluate(State.trainingGame.fen(), 10);
@@ -761,23 +760,37 @@
         const sol = p.solution.split(" ");
         const cur = State.trainingGame.history().length;
 
-        if (cur >= sol.length) {
-          complete();
-        } else {
-          DOM.display.hint.innerHTML = `<strong>Your Turn:</strong> Move ${Math.floor(cur / 2) + 1} of ${Math.ceil(sol.length / 2)}`;
-        }
+        if (cur >= sol.length) setComplete();
+        else DOM.display.hint.innerHTML = `<strong>Your Turn:</strong> Move ${Math.floor(cur / 2) + 1} of ${Math.ceil(sol.length / 2)}`;
       }
     };
 
     // ── GAME LOGIC ────────────────────────────────────────────────────────────
     const GameLogic = {
-      convertPvToAlgebraic(fen, pv) {
+      convertPvToSan(fen, pv) {
         const temp = new Chess(fen);
         return pv.split(" ")
-          .map(m => temp.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] || 'q' }))
-          .filter(Boolean)
-          .map(r => r.san)
-          .join(" ");
+          .map(m => temp.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] || 'q' })?.san)
+          .filter(Boolean).join(" ");
+      },
+
+      handleMoveDrop(source, target) {
+        const sol = State.currentPuzzle.solution.split(" ");
+        const histLen = State.trainingGame.history().length;
+        const temp = new Chess(State.trainingGame.fen());
+        const move = temp.move({ from: source, to: target, promotion: 'q' });
+
+        if (!move || move.san !== sol[histLen]) return 'snapback';
+
+        State.trainingGame.move(move.san);
+        if (State.trainingGame.game_over() || State.trainingGame.history().length >= sol.length) {
+          return UIController.updateTrainingStatus();
+        }
+
+        setTimeout(() => {
+          State.trainingGame.move(sol[State.trainingGame.history().length]);
+          UIController.updateTrainingStatus();
+        }, 500);
       },
 
       loadPuzzle(puzzle) {
@@ -785,16 +798,13 @@
         State.currentPuzzle = puzzle;
         State.trainingGame.load(puzzle.fen);
 
-        const isBlindspot = puzzle.reason === "BLINDSPOT";
+        const isBlunder = puzzle.reason === "BLINDSPOT";
         DOM.display.puzzleHeader.style.display = 'block';
         DOM.display.phPlayers.textContent = puzzle.players;
         DOM.display.phMeta.textContent = `${puzzle.date} | Perspective: ${puzzle.side.toUpperCase()}`;
-        DOM.display.phEval.textContent = isBlindspot
-          ? `You blundered. Show opponent move!`
-          : `Opportunity to improve position by ${puzzle.gain}`;
+        DOM.display.phEval.textContent = isBlunder ? `You blundered. Show opponent move!` : `Opportunity to improve position by ${puzzle.gain}`;
 
-        const startFen = (isBlindspot && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
-        const sol = puzzle.solution.split(" ");
+        const startFen = (isBlunder && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
 
         if (State.board) State.board.destroy();
         State.board = Chessboard('board', {
@@ -803,23 +813,7 @@
           orientation: puzzle.side,
           moveSpeed: 500,
           pieceTheme: 'img/chesspieces/wikipedia/{piece}.png',
-          onDrop: (s, t) => {
-            const histLen = State.trainingGame.history().length;
-            const temp = new Chess(State.trainingGame.fen());
-            const move = temp.move({ from: s, to: t, promotion: 'q' });
-
-            if (!move || move.san !== sol[histLen]) return 'snapback';
-
-            State.trainingGame.move(move.san);
-            if (State.trainingGame.game_over() || State.trainingGame.history().length >= sol.length) {
-              return UIController.updateTrainingStatus();
-            }
-
-            setTimeout(() => {
-              State.trainingGame.move(sol[State.trainingGame.history().length]);
-              UIController.updateTrainingStatus();
-            }, 500);
-          }
+          onDrop: this.handleMoveDrop
         });
 
         UIController.updateTrainingStatus();
@@ -859,14 +853,13 @@
           State.board.position('start');
 
           for (let i = 0; i < history.length; i++) {
-            if (isBatch && !State.isBatchRunning) return;
+            if (isBatch && !State.isBatchRunning) break;
             if (!State.isAnalyzing) return UIController.log("Analysis aborted by user.");
 
-            const prog = Math.round(((i + 1) / history.length) * 100);
             DOM.display.hint.innerHTML = `
               <div class="progress-game">Game ${lbl}</div>
               <div class="progress-player">${players}</div>
-              <small>Move ${i + 1}/${history.length} (${prog}%)</small>`;
+              <small>Move ${i + 1}/${history.length} (${Math.round(((i + 1) / history.length) * 100)}%)</small>`;
 
             if (tracker.game_over()) break;
 
@@ -886,28 +879,27 @@
 
             const sign = turn === 'white' ? 1 : -1;
             const gap = sign * (before.score - after.score);
-            const evalBefore = sign * before.score;
-            const evalAfter = sign * after.score;
 
-            if (turn === uSide && gap >= margin && (evalBefore >= margin || evalAfter < margin)) {
-              const reason = (evalAfter < margin) ? "BLINDSPOT" : "OPPORTUNITY";
-              UIController.log(`✨ Generated ${reason}: Move ${i + 1} (${gap} CP)`);
+            if (turn === uSide && gap >= margin && (sign * before.score >= margin || sign * after.score < margin)) {
+              const reason = (sign * after.score < margin) ? "BLINDSPOT" : "OPPORTUNITY";
+              UIController.log(`✨ Found ${reason}: Move ${i + 1} (${gap} CP)`);
 
               StorageController.save({
-                id: Date.now() + i,
+                id: String(Date.now() + i),
                 gameId, date, depth, margin, players, side: uSide,
                 fen: reason === "BLINDSPOT" ? tracker.fen() : fenBefore,
                 preBlunderFen: reason === "BLINDSPOT" ? fenBefore : null,
                 gain: `${gap} CP`, reason,
-                solution: GameLogic.convertPvToAlgebraic(reason === "BLINDSPOT" ? tracker.fen() : fenBefore, reason === "BLINDSPOT" ? after.pv : before.pv),
+                solution: GameLogic.convertPvToSan(reason === "BLINDSPOT" ? tracker.fen() : fenBefore, reason === "BLINDSPOT" ? after.pv : before.pv),
                 isCompletionRecord: false
               });
-              UIController.updateGameListStatus();
             }
           }
 
-          StorageController.save({ id: `comp-${gameId}-${depth}-${margin}`, gameId, players, gain: null, depth, margin, date, isCompletionRecord: true });
-          UIController.log(`COMPLETE: Checked ${history.length} moves.`, true);
+          if (State.isAnalyzing) {
+            StorageController.save({ id: `comp-${gameId}-${depth}-${margin}`, gameId, players, gain: null, depth, margin, date, isCompletionRecord: true });
+            UIController.log(`COMPLETE: Checked ${history.length} moves.`, true);
+          }
 
         } catch (err) {
           UIController.log(`FATAL ERROR: ${err.message}`);
@@ -915,17 +907,8 @@
           State.isAnalyzing = false;
           if (!isBatch) {
             UIController.toggleAnalysisLock(false);
-            const { gameId } = DOM.inputs.gameList.selectedOptions[0]?.dataset || {};
-            const count = StorageController.getAll().filter(p => p.gameId === gameId && p.gain !== null).length;
-
-            DOM.display.hint.textContent = count > 0
-              ? `Found ${count} opportunities. Select one from the list below to train.`
-              : "Analysis complete. No blindspots found.";
-
-            if (count > 0) {
-              UIController.log(`Analysis complete: ${count} puzzles generated!`, true);
-              UIController.renderSavedPuzzles();
-            }
+            UIController.renderSavedPuzzles();
+            DOM.display.hint.textContent = "Analysis complete. Select a puzzle below.";
           }
         }
       }
@@ -937,49 +920,57 @@
         initDOM();
         State.board = Chessboard('board', { position: 'start', pieceTheme: 'img/chesspieces/wikipedia/{piece}.png' });
 
-        DOM.buttons.reload.addEventListener('click', () => this.handleLoadArchives());
-        DOM.buttons.load.addEventListener('click', () => this.handleLoadGames());
-        DOM.buttons.analyze.addEventListener('click', () => this.handleAnalyze());
-        DOM.buttons.batch.addEventListener('click', () => this.handleBatch());
-        DOM.buttons.stop.addEventListener('click', () => { State.isBatchRunning = State.isAnalyzing = false; UIController.log("Stopping..."); });
-        DOM.buttons.clearLog.addEventListener('click', UIController.clearLog);
-        DOM.buttons.downloadDatabase.addEventListener('click', () => this.handleDownloadDatabase());
-        DOM.buttons.prev.addEventListener('click', () => this.handleStepBack());
-        DOM.buttons.next.addEventListener('click', () => this.handleStepForward());
-        DOM.buttons.hint.addEventListener('click', () => this.handleShowHint());
-        DOM.buttons.reset.addEventListener('click', () => this.handleResetPuzzle());
-        DOM.buttons.solution.addEventListener('click', () => this.handleShowSolution());
-        DOM.buttons.copyFen.addEventListener('click', () => this.handleCopyFen());
+        this.bindGlobalEvents();
+        this.bindDelegatedEvents();
 
-        DOM.inputs.rankFilter.addEventListener('change', UIController.renderSavedPuzzles);
-        DOM.inputs.sortPuzzles.addEventListener('change', UIController.renderSavedPuzzles);
+        this.handleLoadArchives();
+        UIController.renderSavedPuzzles();
+      },
 
-        const btnUpload = $('btnUploadPuzzles'), fileInput = $('uploadDatabase');
-        btnUpload.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', e => this.handleUploadDatabase(e));
+      bindGlobalEvents() {
+        const events = [
+          [DOM.buttons.reload, 'click', () => this.handleLoadArchives()],
+          [DOM.buttons.load, 'click', () => this.handleLoadGames()],
+          [DOM.buttons.analyze, 'click', () => this.handleAnalyze()],
+          [DOM.buttons.batch, 'click', () => this.handleBatch()],
+          [DOM.buttons.stop, 'click', () => { State.isBatchRunning = State.isAnalyzing = false; UIController.log("Stopping..."); }],
+          [DOM.buttons.clearLog, 'click', UIController.clearLog],
+          [DOM.buttons.downloadDb, 'click', () => this.handleDownloadDatabase()],
+          [DOM.buttons.uploadDb, 'click', () => DOM.inputs.uploadDb.click()],
+          [DOM.buttons.prev, 'click', () => this.handleStepBack()],
+          [DOM.buttons.next, 'click', () => this.handleStepForward()],
+          [DOM.buttons.hint, 'click', () => this.handleShowHint()],
+          [DOM.buttons.reset, 'click', () => this.handleResetPuzzle()],
+          [DOM.buttons.solution, 'click', () => this.handleShowSolution()],
+          [DOM.buttons.copyFen, 'click', () => this.handleCopyFen()],
+          [DOM.inputs.rankFilter, 'change', UIController.renderSavedPuzzles],
+          [DOM.inputs.sortPuzzles, 'change', UIController.renderSavedPuzzles],
+          [DOM.inputs.uploadDb, 'change', (e) => this.handleUploadDatabase(e)]
+        ];
+        events.forEach(([el, type, fn]) => el?.addEventListener(type, fn));
+      },
 
+      bindDelegatedEvents() {
         DOM.display.puzzles.addEventListener('click', e => {
           const del = e.target.closest('.btn-delete');
           const row = e.target.closest('.puzzle-clickable');
           if (del) StorageController.delete(del.dataset.deleteId);
-          else if (row) GameLogic.loadPuzzle(StorageController.getAll().find(x => x.id === (isNaN(row.dataset.id) ? row.dataset.id : Number(row.dataset.id))));
+          else if (row) GameLogic.loadPuzzle(StorageController.getAll().find(x => x.id === row.dataset.id));
         });
 
         DOM.display.classifyControls.addEventListener('click', e => {
-          if (e.target.dataset.rank) {
-            StorageController.rank(State.currentPuzzle?.id, e.target.dataset.rank);
-            if (State.currentPuzzle) State.currentPuzzle.rating = e.target.dataset.rank;
+          if (e.target.dataset.rank && State.currentPuzzle) {
+            StorageController.rank(State.currentPuzzle.id, e.target.dataset.rank);
+            State.currentPuzzle.rating = e.target.dataset.rank;
           }
         });
-
-        this.handleLoadArchives();
-        UIController.renderSavedPuzzles();
       },
 
       async handleLoadArchives() {
         const user = DOM.inputs.player.value.trim();
         if (!user) return;
         const archives = await ApiController.fetchArchives(user);
+        if (!archives) return;
 
         DOM.inputs.year.innerHTML = [...new Set(archives.map(a => a.year))].map(y => `<option value="${y}">${y}</option>`).join('');
         DOM.inputs.year.onchange = () => {
@@ -990,11 +981,13 @@
 
       async handleLoadGames() {
         const data = await ApiController.fetchGames(DOM.inputs.player.value, DOM.inputs.year.value, DOM.inputs.month.value);
-        if (!data.games) return DOM.inputs.gameList.innerHTML = "";
+        if (!data?.games) return DOM.inputs.gameList.innerHTML = "";
 
         DOM.inputs.gameList.innerHTML = data.games.reverse().map((g, i) => {
           const id = `${g.white.username}-${g.black.username}-${g.end_time}`;
-          return `<option value="${i}" data-pgn="${g.pgn.replace(/"/g, '&quot;')}" data-game-id="${id}" data-date="${new Date(g.end_time * 1000).toLocaleDateString()}" data-white-name="${g.white.username}" data-black-name="${g.black.username}" data-w-r="${g.white.rating || '?'}" data-b-r="${g.black.rating || '?'}"></option>`;
+          const safePgn = g.pgn.replace(/"/g, '&quot;');
+          const date = new Date(g.end_time * 1000).toLocaleDateString();
+          return `<option value="${i}" data-pgn="${safePgn}" data-game-id="${id}" data-date="${date}" data-white-name="${g.white.username}" data-black-name="${g.black.username}" data-w-r="${g.white.rating || '?'}" data-b-r="${g.black.rating || '?'}"></option>`;
         }).join('');
         UIController.updateGameListStatus();
       },
@@ -1027,8 +1020,7 @@
       handleStepBack() { State.trainingGame.undo(); State.trainingGame.undo(); UIController.updateTrainingStatus(); },
 
       async handleStepForward() {
-        const p = State.currentPuzzle;
-        const sol = p?.solution.split(" ");
+        const sol = State.currentPuzzle?.solution.split(" ");
         let cur = State.trainingGame.history().length;
 
         if (sol && cur < sol.length) {
@@ -1043,10 +1035,8 @@
       },
 
       handleShowHint() {
-        const p = State.currentPuzzle;
-        const sol = p?.solution.split(" ");
+        const sol = State.currentPuzzle?.solution.split(" ");
         const cur = State.trainingGame.history().length;
-
         if (sol && cur < sol.length) {
           const move = new Chess(State.trainingGame.fen()).move(sol[cur]);
           if (move) DOM.display.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${{ p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' }[move.piece] || 'piece'}</u> on <strong>${move.from}</strong>`;
@@ -1066,7 +1056,6 @@
         } else {
           State.board.position(p.fen, false);
         }
-        UIController.log("Puzzle reset.");
       },
 
       async handleShowSolution() {
@@ -1101,10 +1090,7 @@
         if (!rawData) return console.error("No data found to backup!");
 
         try {
-          const jsonObj = JSON.parse(rawData);
-          const formattedJson = JSON.stringify(jsonObj, null, 2);
-          const blob = new Blob([formattedJson], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
+          const url = URL.createObjectURL(new Blob([JSON.stringify(JSON.parse(rawData), null, 2)], { type: 'application/json' }));
           const link = document.createElement('a');
           link.href = url;
           link.download = `blindspot_backup_${new Date().toISOString().slice(0, 10)}.json`;
@@ -1126,8 +1112,11 @@
             if (!Array.isArray(imported)) throw new Error("Invalid format.");
 
             const existing = StorageController.getAll();
-            const existingIds = new Set(existing.map(p => p.id));
-            const newItems = imported.filter(p => !existingIds.has(p.id));
+            const existingIds = new Set(existing.map(p => String(p.id)));
+            const newItems = imported.filter(p => {
+              p.id = String(p.id);
+              return !existingIds.has(p.id);
+            });
 
             localStorage.setItem(StorageController.KEY, JSON.stringify([...existing, ...newItems]));
             UIController.log(`Imported ${newItems.length} new puzzles!`, true);
