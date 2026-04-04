@@ -544,8 +544,7 @@
       },
 
       save(puzzle) {
-        puzzle.id = String(puzzle.id); // Ensure ID is standard string
-        const items = this.getAll().filter(x => String(x.id) !== puzzle.id);
+        const items = this.getAll().filter(x => x.id !== puzzle.id);
         items.push(puzzle);
         this._persist(items);
       },
@@ -562,10 +561,10 @@
       delete(id) {
         const targetId = String(id);
         let items = this.getAll();
-        const puzzle = items.find(p => String(p.id) === targetId);
+        const puzzle = items.find(p => p.id === targetId);
         if (!puzzle) return;
 
-        items = items.filter(p => String(p.id) !== targetId);
+        items = items.filter(p => p.id !== targetId);
 
         // Clean up metadata record if no puzzles remain for this game
         if (!items.some(p => p.gameId === puzzle.gameId && p.gain !== null)) {
@@ -574,7 +573,7 @@
 
         this._persist(items);
 
-        if (String(State.currentPuzzle?.id) === targetId) {
+        if (State.currentPuzzle?.id === targetId) {
           State.currentPuzzle = null;
           State.board.start();
           DOM.display.hint.textContent = "Select a puzzle...";
@@ -584,7 +583,7 @@
 
       markSolved(id) {
         const items = this.getAll();
-        const p = items.find(x => String(x.id) === String(id));
+        const p = items.find(x => x.id === id);
         if (p && !p.solved) {
           p.solved = true;
           this._persist(items);
@@ -595,7 +594,7 @@
       rank(id, rating) {
         if (!id) return;
         const items = this.getAll();
-        const p = items.find(x => String(x.id) === String(id));
+        const p = items.find(x => x.id === id);
         if (p) {
           p.rating = rating;
           this._persist(items);
@@ -621,7 +620,6 @@
         const data = await this._fetch(`https://api.chess.com/pub/player/${user}/games/archives`, 'Failed to fetch archives');
         if (!data || !data.archives) return null;
 
-        // Restore the logic that turns the raw URLs into { year, month } objects
         return data.archives
           .map(url => {
             const parts = url.split('/');
@@ -919,10 +917,8 @@
       init() {
         initDOM();
         State.board = Chessboard('board', { position: 'start', pieceTheme: 'img/chesspieces/wikipedia/{piece}.png' });
-
         this.bindGlobalEvents();
         this.bindDelegatedEvents();
-
         this.handleLoadArchives();
         UIController.renderSavedPuzzles();
       },
