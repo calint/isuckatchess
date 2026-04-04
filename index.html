@@ -441,12 +441,12 @@
 
       <div class="classify-row" id="classifyControls">
         <span class="classify-label">Classify:</span>
-        <button data-rank="1" class="btn-classify btn-green grow-1">Rotation 1</button>
-        <button data-rank="2" class="btn-classify btn-green grow-1">Rotation 2</button>
-        <button data-rank="3" class="btn-classify btn-orange grow-1">Overtrained 1</button>
-        <button data-rank="4" class="btn-classify btn-orange grow-1">Overtrained 2</button>
-        <button data-rank="5" class="btn-classify btn-black grow-1">Too complex 1</button>
-        <button data-rank="6" class="btn-classify btn-black grow-1">Too complex 2</button>
+        <button data-category="1" class="btn-classify btn-green grow-1">Rotation 1</button>
+        <button data-category="2" class="btn-classify btn-green grow-1">Rotation 2</button>
+        <button data-category="3" class="btn-classify btn-orange grow-1">Overtrained 1</button>
+        <button data-category="4" class="btn-classify btn-orange grow-1">Overtrained 2</button>
+        <button data-category="5" class="btn-classify btn-black grow-1">Too complex 1</button>
+        <button data-category="6" class="btn-classify btn-black grow-1">Too complex 2</button>
       </div>
 
       <div class="puzzles-header">
@@ -457,7 +457,7 @@
           <option value="dateDesc" selected>Date (Newest)</option>
           <option value="dateAsc">Date (Oldest)</option>
         </select>
-        <select id="rankFilter" class="filter-select">
+        <select id="categoryFilter" class="filter-select">
           <option value="All">All Puzzles</option>
           <option value="1">Rotation 1</option>
           <option value="2">Rotation 2</option>
@@ -493,7 +493,8 @@
       DOM.inputs = {
         player: $('player'), year: $('year'), month: $('month'),
         lookahead: $('lookahead'), margin: $('margin'), gameList: $('gameList'),
-        rankFilter: $('rankFilter'), sortPuzzles: $('sortPuzzles'), uploadDb: $('uploadDatabase')
+        categoryFilter: $('categoryFilter'), sortPuzzles: $('sortPuzzles'),
+        uploadDb: $('uploadDatabase')
       };
       DOM.buttons = {
         reload: $('btnReload'), load: $('btnLoad'), analyze: $('btnAnalyze'),
@@ -513,7 +514,7 @@
     // ── TEMPLATES ─────────────────────────────────────────────────────────────
     const TemplateUI = {
       puzzleItem(p) {
-        const badge = p.rating ? `<span class="rank-badge">${CATEGORIES[p.rating] || p.rating}</span>` : "";
+        const badge = p.category ? `<span class="rank-badge">${CATEGORIES[p.category] || p.category}</span>` : "";
         const isBlunder = p.reason === 'BLINDSPOT';
         const icon = isBlunder ? '[??]' : '[!]';
         const title = isBlunder ? 'Blunder' : 'Missed Opportunity';
@@ -591,14 +592,14 @@
         }
       },
 
-      rank(id, rating) {
+      setCategory(id, category) {
         if (!id) return;
         const items = this.getAll();
         const p = items.find(x => x.id === id);
         if (p) {
-          p.rating = rating;
+          p.category = category;
           this._persist(items);
-          UIController.log(`${p.players} → ${CATEGORIES[rating] || rating}`);
+          UIController.log(`${p.players} → ${CATEGORIES[category] || category}`);
         }
       }
     };
@@ -712,25 +713,20 @@
       },
 
       renderSavedPuzzles() {
-        const filter = DOM.inputs.rankFilter?.value || "All";
+        const filter = DOM.inputs.categoryFilter?.value || "All"; // Renamed from rankFilter
         const sort = DOM.inputs.sortPuzzles?.value || "dateDesc";
-        const ratingOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 };
+        const categoryOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 };
 
         let items = StorageController.getAll().filter(p => {
           if (p.isCompletionRecord || p.gain === null) return false;
-          if (filter === "Unrated") return !p.rating;
-          return filter === "All" || p.rating === filter;
+          if (filter === "Unrated") return !p.category; // Changed from p.rating
+          return filter === "All" || p.category === filter; // Changed from p.rating
         });
 
-        DOM.display.puzzleCount.textContent = `(${items.length})`;
-
         items.sort((a, b) => {
-          const gainA = parseInt(a.gain) || 0;
-          const gainB = parseInt(b.gain) || 0;
-
-          if (sort === "rating") {
-            const diff = (ratingOrder[a.rating] || 6) - (ratingOrder[b.rating] || 6);
-            return diff !== 0 ? diff : gainB - gainA;
+          if (sort === "category") { // Changed from "rating"
+            const diff = (categoryOrder[a.category] || 6) - (categoryOrder[b.category] || 6);
+            return diff !== 0 ? diff : (parseInt(b.gain) - parseInt(a.gain));
           }
           if (sort === "severity") return gainB - gainA;
           if (sort === "dateAsc") return new Date(a.date) - new Date(b.date);
@@ -939,7 +935,7 @@
           [DOM.buttons.reset, 'click', () => this.handleResetPuzzle()],
           [DOM.buttons.solution, 'click', () => this.handleShowSolution()],
           [DOM.buttons.copyFen, 'click', () => this.handleCopyFen()],
-          [DOM.inputs.rankFilter, 'change', UIController.renderSavedPuzzles],
+          [DOM.inputs.categoryFilter, 'change', UIController.renderSavedPuzzles],
           [DOM.inputs.sortPuzzles, 'change', UIController.renderSavedPuzzles],
           [DOM.inputs.uploadDb, 'change', (e) => this.handleUploadDatabase(e)]
         ];
@@ -955,9 +951,9 @@
         });
 
         DOM.display.classifyControls.addEventListener('click', e => {
-          if (e.target.dataset.rank && State.currentPuzzle) {
-            StorageController.rank(State.currentPuzzle.id, e.target.dataset.rank);
-            State.currentPuzzle.rating = e.target.dataset.rank;
+          if (e.target.dataset.category && State.currentPuzzle) {
+            StorageController.setCategory(State.currentPuzzle.id, e.target.dataset.category);
+            State.currentPuzzle.category = e.target.dataset.category;
           }
         });
       },
