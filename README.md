@@ -17,9 +17,13 @@ opportunity or made a blunder.
 
 ## step 1, create puzzles
 
-Click Batch All to analyze your games. The engine will process every game while
-displaying a pleasant progress animation. Once finished, adjust your filters to
-sort by Severity and Uncategorized.
+* enter your chess.com username in the field
+* load years and months of available archives
+* fetch games for specified month
+* click Batch All to analyze your games
+
+The engine will process the games while displaying a progress animation. Once
+finished, adjust your filters to sort by Severity and Uncategorized.
 
 ## step 2, categorize
 
