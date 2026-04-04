@@ -13,7 +13,9 @@ recognition, and there is no better place to start than with your own games.
 
 Use the Blind Spot Trainer to retrieve and analyze your past games. The tool
 will generate custom puzzles from positions where you either missed an
-opportunity or made a blunder.
+opportunity or made a blunder. A blind spot isn't just a mistake; it's a pattern
+your brain currently isn't wired to see. This tool helps you 'see' what you've
+been missing.
 
 ## step 1, create puzzles
 
