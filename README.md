@@ -90,13 +90,9 @@ tactics. Your goal is simply to survive the opening: develop your pieces,
 castle, and reach a playable middlegame. Sounds easier than it is if the
 opponent has a well prepared opening.
 
-If you get crushed early, watch a quick video afterward to learn the
-counter-ideas. Memorizing a few key responses to the common openings you face
-will make a difference.
-
-Watching videos about openings is the more relaxed part of the training. Focus
-on the core ideas instead of memorizing moves. Ideas are easier to remember, and
-they make the candidate moves more obvious.
+If you get crushed early or encounter an unfamiliar opening, watch videos about
+it. Focus on the core counter-ideas rather than memorizing moves. Ideas are
+easier to remember and naturally reveal candidate moves.
 
 ## checklist
 
