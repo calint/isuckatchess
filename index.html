@@ -734,6 +734,7 @@
         });
 
         DOM.display.puzzles.innerHTML = items.map(TemplateUI.puzzleItem).join('');
+        DOM.display.puzzleCount.textContent = `(${items.length})`;
       },
 
       async updateTrainingStatus() {
