@@ -728,7 +728,7 @@
             const diff = (categoryOrder[a.category] || 6) - (categoryOrder[b.category] || 6);
             return diff !== 0 ? diff : (parseInt(b.gain) - parseInt(a.gain));
           }
-          if (sort === "severity") return gainB - gainA;
+          if (sort === "severity") return b.gain - a.gain;
           if (sort === "dateAsc") return new Date(a.date) - new Date(b.date);
           return new Date(b.date) - new Date(a.date);
         });
