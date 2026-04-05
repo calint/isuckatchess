@@ -386,16 +386,12 @@
         <select id="gameList" size="6"></select>
 
         <div class="settings-row">
-          <div class="grow-2">
-            <label for="lookahead">Lookahead:</label>
-            <select id="lookahead">
-              <option value="5">5 moves</option>
-              <option value="8">8 moves</option>
-              <option value="12" selected>12 moves</option>
-            </select>
+          <div class="grow-1">
+            <label for="lookahead">Lookahead Moves:</label>
+            <input id="lookahead" type="number" value="12">
           </div>
           <div class="grow-1">
-            <label for="margin">Margin (CP):</label>
+            <label for="margin">Evaluation Threshold:</label>
             <input id="margin" type="number" value="250">
           </div>
         </div>
