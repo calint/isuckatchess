@@ -115,7 +115,7 @@ Captures, and Threats.
 
 Going for a checkmate attack is often risky, as it usually requires sacrifices
 and very precise tactics. A safer strategy is to simply win a single pawn, then
-trade pieces until you reach an endgame where your extra material does the work.
+trade pieces until you reach an endgame where your extra pawn is winning.
 Learning to like these types of endings can feel a bit slow at first, but it
 becomes quite satisfying as you get the hang of them.
 
