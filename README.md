@@ -58,8 +58,8 @@ batch is complete.
 If you instantly recognize a puzzle and know the first few moves from memory
 without actively calculating, the puzzle has been overtrained. Rote memorization
 bypasses the calculation practice you need. If this happens, categorize it as
-Overtrained so you can set it aside. You can revisit this batch much later when
-the specific positions have faded from your memory.
+Overtrained so you can set it aside. You can revisit this batch later when the
+specific positions have faded from your memory.
 
 ## step 5, play long games
 
@@ -100,14 +100,13 @@ easier to remember and naturally reveal candidate moves.
 
 It’s remarkable how many games at this level are decided simply by capturing a
 piece left en prise or a one move fork. Before committing to a move, try
-visualizing your piece on its new square and scanning the board for potential
+visualizing your piece on its new square and scan the board for potential
 captures. Reducing these types of blunders is often the most effective way to
 start climbing the ranks.
 
 When your opponent makes a move, it helps to pause and ask what is being
-threatened. It’s also worth checking if the moved piece was previously blocking
-a long-range unit, like a bishop or rook, which might now have a clear line of
-attack.
+threatened. It’s also worth checking if the moved piece has discovered a
+previously blocked piece.
 
 A helpful way to structure your calculation is to prioritize CCT: Checks,
 Captures, and Threats.
