@@ -131,3 +131,5 @@ and pawns. Concepts such as weak squares and pawns are crucial.
   opponents half of the board
 * weak pawns cannot be protected by other pawns and become targets for your
   pieces
+    
+One plan is to induce weak pawns and squares, then find ways of attacking them.
