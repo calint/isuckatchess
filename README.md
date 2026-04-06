@@ -99,10 +99,10 @@ easier to remember and naturally reveal candidate moves.
 ## checklist
 
 It’s remarkable how many games at this level are decided simply by capturing a
-piece left en prise or a one move fork. Before committing to a move, try
-visualizing your piece on its new square and scan the board for potential
-captures. Reducing these types of blunders is often the most effective way to
-start climbing the ranks.
+piece left en prise or a one move fork. Before committing to a move, visualize
+the piece on its new square and scan the board for potential captures. Reducing
+these types of blunders is often the most effective way to start climbing the
+ranks.
 
 When your opponent makes a move, it helps to pause and ask what is being
 threatened. It’s also worth checking if the moved piece has discovered a
@@ -125,4 +125,4 @@ often turn into a win at this level.
 ## beginning of positional play
 
 Realize that it is about the squares and how to control them using the pieces
-and pawns.
+and pawns. Concepts such as weak squares and pawns are crucial.
