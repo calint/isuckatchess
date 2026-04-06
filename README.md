@@ -140,8 +140,7 @@ has a solely defensive task or is blocked by its own pawns, it is passive.
 
 ## finishing of a winning position
 
-Once you have achieved a winning position by being up material, make safe moves
-that restrict your opponent while solidifying and improving your own position.
-Computers will often show fancy sequences of strong moves that are murky to the
-human mind. Play safety first. Manage your time and choose the simplest way to
-win, not the fastest. Do not lash out.
+Once you are up material, make safe moves that restrict your opponent while
+solidifying and simplifying the position. Computers often suggest complex
+sequences that are murky to humans; prioritize safety instead. Manage your time
+and choose the simplest way to win, not the fastest. Do not lash out.
