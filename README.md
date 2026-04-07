@@ -42,9 +42,9 @@ practicing. Do not get discouraged if they seem difficult; they are specifically
 targeting your personal blind spots. Spend about a minute on each position. If
 you can't find the solution, click Hint to see which piece to move.
 
-Calculation gets easier with practice, much like learning the multiplication
-tables it takes time before the answers come instantly. To understand why
-alternative moves fail, copy the position's FEN, paste it into
+Calculation gets easier with practice; much like learning multiplication tables,
+it takes time before the answers come instantly. To understand why alternative
+moves fail, copy the position's FEN, paste it into
 <https://lichess.org/analysis/>, and experiment with different replies.
 
 Ensure you understand the reasoning behind the correct solution, keeping in mind
@@ -89,8 +89,8 @@ instructional advantage should be moved to Too Complex 2 for later review.
 At this level, many opponents rely on "system" openings they know by heart.
 You’ll often face sharp lines where they’re comfortable with specific tricks and
 tactics. Your goal is simply to survive the opening: develop your pieces,
-castle, and reach a playable middlegame. Sounds easier than it is if the
-opponent has a well prepared opening.
+castle, and reach a playable middlegame. This is often harder than it sounds if
+your opponent has prepared their lines well.
 
 If you get crushed early or encounter an unfamiliar opening, watch videos about
 it. Focus on the core counter-ideas rather than memorizing moves. Ideas are
@@ -131,7 +131,7 @@ and pawns. Concepts such as weak squares and pawns are essential.
 * weak pawns cannot be protected by other pawns and become targets for your
   pieces
 
-Per definition moving a pawn creates weak squares.
+By definition, every pawn move creates weak squares.
 
 A plan is to induce weak pawns and squares, then find ways to attack them. In
 the absence of such a plan, improve the least active piece.
