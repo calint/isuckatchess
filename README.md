@@ -139,7 +139,10 @@ has a solely defensive task or is blocked by its own pawns, it is passive.
 
 ## finishing of a winning position
 
-Once you are up material, make safe moves that restrict your opponent while
-solidifying and simplifying the position. Computers often suggest complex
-sequences that are murky to humans; prioritize safety instead. Manage your time
-and choose the simplest way to win, not the fastest. Do not lash out.
+Once you are up material, make safe moves that restrict your opponent's
+counterplay while solidifying and simplifying the position. Computers often
+suggest complex sequences of strong moves that are too murky at this level.
+Manage your time and choose the simplest and safest way to a win, not the
+fastest.
+
+Do not lash out.
