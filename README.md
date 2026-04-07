@@ -125,7 +125,7 @@ often turn into a win at this level.
 ## beginning of positional play
 
 Realize that it is about the squares and how to control them using the pieces
-and pawns. Concepts such as weak squares and pawns are crucial.
+and pawns. Concepts such as weak squares and pawns are essential.
 
 * weak squares cannot be defended by pawns and can become outposts in your
   opponents half of the board
