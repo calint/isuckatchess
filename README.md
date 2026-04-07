@@ -131,6 +131,8 @@ and pawns. Concepts such as weak squares and pawns are essential.
 * weak pawns cannot be protected by other pawns and become targets for your
   pieces
 
+Per definition moving a pawn creates weak squares.
+
 A plan is to induce weak pawns and squares, then find ways to attack them. In
 the absence of such a plan, improve the least active piece.
 
