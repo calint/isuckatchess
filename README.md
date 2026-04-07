@@ -101,8 +101,7 @@ easier to remember and naturally reveal candidate moves.
 It’s remarkable how many games at this level are decided simply by capturing a
 piece left en prise or a one move fork. Before committing to a move, visualize
 the piece on its new square and scan the board for potential captures. Reducing
-these types of blunders is often the most effective way to start climbing the
-ranks.
+these types of blunders is often the most effective way to gain rating.
 
 When your opponent makes a move, it helps to pause and ask what is being
 threatened. It’s also worth checking if the moved piece has discovered a
