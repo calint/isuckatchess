@@ -148,4 +148,3 @@ Manage your time and choose the simplest and safest way to a win, not the
 fastest.
 
 Do not lash out.
-

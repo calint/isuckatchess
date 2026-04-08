@@ -1039,6 +1039,9 @@
         const animId = ++State.currentAnimationId;
         State.trainingGame.load(p.fen);
 
+        UIController.updateTrainingStatus();
+        UIController.updateEvalBar(0);
+
         if (p.reason === "BLINDSPOT" && p.preBlunderFen) {
           State.board.position(p.preBlunderFen, false);
           if (State.currentAnimationId === animId) State.board.position(p.fen, true);
