@@ -358,10 +358,7 @@
       font-size: 0.8rem;
     }
 
-    #btnStop {
-      display: none;
-    }
-
+    #btnStop,
     .hidden {
       display: none;
     }
@@ -475,13 +472,21 @@
   <script src="lib/chessboard-1.0.0.min.js"></script>
   <script src="lib/chess.min.js"></script>
   <script>
-    const CATEGORIES = { '1': 'Rotation 1', '2': 'Rotation 2', '3': 'Overtrained 1', '4': 'Overtrained 2', '5': 'Too Complex 1', '6': 'Too Complex 2' };
+    const CATEGORIES = {
+      '1': 'Rotation 1', '2': 'Rotation 2',
+      '3': 'Overtrained 1', '4': 'Overtrained 2',
+      '5': 'Too Complex 1', '6': 'Too Complex 2'
+    };
 
     // ── STATE & DOM ───────────────────────────────────────────────────────────
     const State = {
-      engine: null, board: null, currentPuzzle: null,
+      engine: null,
+      board: null,
+      currentPuzzle: null,
       trainingGame: new Chess(),
-      isBatchRunning: false, isAnalyzing: false, currentAnimationId: 0
+      isBatchRunning: false,
+      isAnalyzing: false,
+      currentAnimationId: 0
     };
 
     const DOM = {};
@@ -511,20 +516,22 @@
 
     // ── TEMPLATES ─────────────────────────────────────────────────────────────
     const TemplateUI = {
-      puzzleItem(p) {
-        const badge = p.category ? `<span class="rank-badge">${CATEGORIES[p.category] || p.category}</span>` : "";
-        const isBlunder = p.reason === 'BLINDSPOT';
+      puzzleItem(puzzle) {
+        const badge = puzzle.category
+          ? `<span class="rank-badge">${CATEGORIES[puzzle.category] || puzzle.category}</span>`
+          : "";
+        const isBlunder = puzzle.reason === 'BLINDSPOT';
         const icon = isBlunder ? '[??]' : '[!]';
         const title = isBlunder ? 'Blunder' : 'Missed Opportunity';
 
         return `
-          <div class="puzzle-item ${p.solved ? 'solved' : ''}">
+          <div class="puzzle-item ${puzzle.solved ? 'solved' : ''}">
             <div class="puzzle-row">
-              <div class="puzzle-clickable" data-id="${p.id}">
-                <strong><span class="type-icon" title="${title}">${icon}</span>${p.players}</strong>${badge}<br>
-                <small>${p.gain} | ${p.date} (${p.depth}d)</small>
+              <div class="puzzle-clickable" data-id="${puzzle.id}">
+                <strong><span class="type-icon" title="${title}">${icon}</span>${puzzle.players}</strong>${badge}<br>
+                <small>${puzzle.gain} | ${puzzle.date} (${puzzle.depth}d)</small>
               </div>
-              <button data-delete-id="${p.id}" class="btn-delete">Delete</button>
+              <button data-delete-id="${puzzle.id}" class="btn-delete">Delete</button>
             </div>
           </div>`;
       }
@@ -543,31 +550,31 @@
       },
 
       save(puzzle) {
-        const items = this.getAll().filter(x => x.id !== puzzle.id);
+        const items = this.getAll().filter(item => item.id !== puzzle.id);
         items.push(puzzle);
         this._persist(items);
       },
 
       _find: (gameId, depth, margin, isRecordCheck) =>
-        StorageController.getAll().find(p =>
-          p.gameId === gameId && p.depth === depth && p.margin === margin &&
-          (isRecordCheck ? p.isCompletionRecord : (p.gain !== null && !p.isCompletionRecord))
+        StorageController.getAll().find(puzzle =>
+          puzzle.gameId === gameId && puzzle.depth === depth && puzzle.margin === margin &&
+          (isRecordCheck ? puzzle.isCompletionRecord : (puzzle.gain !== null && !puzzle.isCompletionRecord))
         ),
 
-      findPuzzle: (id, d, m) => StorageController._find(id, d, m, false),
-      findRecord: (id, d, m) => StorageController._find(id, d, m, true),
+      findPuzzle: (id, depth, margin) => StorageController._find(id, depth, margin, false),
+      findRecord: (id, depth, margin) => StorageController._find(id, depth, margin, true),
 
       delete(id) {
         const targetId = String(id);
         let items = this.getAll();
-        const puzzle = items.find(p => p.id === targetId);
-        if (!puzzle) return;
+        const targetPuzzle = items.find(puzzle => puzzle.id === targetId);
+        if (!targetPuzzle) return;
 
-        items = items.filter(p => p.id !== targetId);
+        items = items.filter(puzzle => puzzle.id !== targetId);
 
-        // Clean up metadata record if no puzzles remain for this game
-        if (!items.some(p => p.gameId === puzzle.gameId && p.gain !== null)) {
-          items = items.filter(p => p.gameId !== puzzle.gameId);
+        // Clean up metadata record if no active puzzles remain for this specific game
+        if (!items.some(puzzle => puzzle.gameId === targetPuzzle.gameId && puzzle.gain !== null)) {
+          items = items.filter(puzzle => puzzle.gameId !== targetPuzzle.gameId);
         }
 
         this._persist(items);
@@ -582,22 +589,22 @@
 
       markSolved(id) {
         const items = this.getAll();
-        const p = items.find(x => x.id === id);
-        if (p && !p.solved) {
-          p.solved = true;
+        const puzzle = items.find(item => item.id === id);
+        if (puzzle && !puzzle.solved) {
+          puzzle.solved = true;
           this._persist(items);
-          UIController.log(`Completed: ${p.players}`, true);
+          UIController.log(`Completed: ${puzzle.players}`, true);
         }
       },
 
       setCategory(id, category) {
         if (!id) return;
         const items = this.getAll();
-        const p = items.find(x => x.id === id);
-        if (p) {
-          p.category = category;
+        const puzzle = items.find(item => item.id === id);
+        if (puzzle) {
+          puzzle.category = category;
           this._persist(items);
-          UIController.log(`${p.players} → ${CATEGORIES[category] || category}`);
+          UIController.log(`${puzzle.players} → ${CATEGORIES[category] || category}`);
         }
       }
     };
@@ -609,8 +616,8 @@
           const res = await fetch(url);
           if (!res.ok) throw new Error(errMsg);
           return await res.json();
-        } catch (e) {
-          UIController.log(`Error: ${e.message}`);
+        } catch (error) {
+          UIController.log(`Error: ${error.message}`);
           return null;
         }
       },
@@ -627,7 +634,8 @@
           .sort((a, b) => b.year - a.year || b.month - a.month);
       },
 
-      fetchGames: async (user, year, month) => await ApiController._fetch(`https://api.chess.com/pub/player/${user}/games/${year}/${month}`, 'Failed to fetch games')
+      fetchGames: async (user, year, month) =>
+        await ApiController._fetch(`https://api.chess.com/pub/player/${user}/games/${year}/${month}`, 'Failed to fetch games')
     };
 
     // ── ENGINE ────────────────────────────────────────────────────────────────
@@ -644,7 +652,7 @@
         return new Promise(resolve => {
           let lastScore = 0, lastPv = "";
 
-          const onMsg = ({ data }) => {
+          const onMessage = ({ data }) => {
             if (data.includes("score")) {
               const cpMatch = data.match(/score cp (-?\d+)/);
               if (cpMatch) lastScore = parseInt(cpMatch[1], 10) * sideMultiplier;
@@ -661,13 +669,13 @@
             }
 
             if (data.startsWith("bestmove")) {
-              engine.removeEventListener("message", onMsg);
-              const best = data.split(" ")[1];
-              resolve({ score: lastScore, best: best === "(none)" ? null : best, pv: lastPv });
+              engine.removeEventListener("message", onMessage);
+              const bestMove = data.split(" ")[1];
+              resolve({ score: lastScore, best: bestMove === "(none)" ? null : bestMove, pv: lastPv });
             }
           };
 
-          engine.addEventListener("message", onMsg);
+          engine.addEventListener("message", onMessage);
           engine.postMessage(`position fen ${fen}`);
           engine.postMessage(`go depth ${depth}`);
         });
@@ -676,10 +684,10 @@
 
     // ── UI ────────────────────────────────────────────────────────────────────
     const UIController = {
-      log(msg, isHeader = false) {
+      log(message, isHeader = false) {
         const div = document.createElement('div');
-        div.style.color = isHeader ? '#fff' : '';
-        div.textContent = `> ${msg}`;
+        if (isHeader) div.style.color = '#fff';
+        div.textContent = `> ${message}`;
         DOM.display.log.appendChild(div);
         DOM.display.log.scrollTop = DOM.display.log.scrollHeight;
       },
@@ -688,13 +696,15 @@
         DOM.display.log.innerHTML = 'Ready.';
       },
 
-      updateEvalBar: cp => DOM.display.evalFill.style.height = `${Math.max(0, Math.min(100, 50 + cp / 40))}%`,
+      updateEvalBar: centiPawns => {
+        DOM.display.evalFill.style.height = `${Math.max(0, Math.min(100, 50 + centiPawns / 40))}%`;
+      },
 
       toggleAnalysisLock(isLocked) {
-        const display = isLocked ? 'none' : 'block';
-        Object.values(DOM.buttons).forEach(btn => { if (btn !== DOM.buttons.stop) btn.style.display = display; });
-        Object.values(DOM.inputs).forEach(input => { if (input === DOM.inputs.uploadDb) return; input.style.display = display; });
-        document.querySelectorAll('.settings-row label').forEach(l => l.style.display = display);
+        const displayState = isLocked ? 'none' : 'block';
+        Object.values(DOM.buttons).forEach(btn => { if (btn !== DOM.buttons.stop) btn.style.display = displayState; });
+        Object.values(DOM.inputs).forEach(input => { if (input === DOM.inputs.uploadDb) return; input.style.display = displayState; });
+        document.querySelectorAll('.settings-row label').forEach(label => label.style.display = displayState);
 
         DOM.buttons.stop.style.display = isLocked ? 'block' : 'none';
         if (isLocked) DOM.display.puzzleHeader.style.display = 'none';
@@ -702,33 +712,33 @@
 
       updateGameListStatus() {
         const puzzles = StorageController.getAll();
-        Array.from(DOM.inputs.gameList.options).forEach(opt => {
-          const { gameId, date, whiteName, blackName, wR, bR } = opt.dataset;
-          const record = puzzles.find(p => p.gameId === gameId);
-          const status = record ? (record.gain ? '+ ' : '- ') : '';
-          opt.text = `${status}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
+        Array.from(DOM.inputs.gameList.options).forEach(option => {
+          const { gameId, date, whiteName, blackName, wR, bR } = option.dataset;
+          const record = puzzles.find(puzzle => puzzle.gameId === gameId);
+          const statusPrefix = record ? (record.gain ? '+ ' : '- ') : '';
+          option.text = `${statusPrefix}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
         });
       },
 
       renderSavedPuzzles() {
-        const filter = DOM.inputs.categoryFilter?.value || "All"; // Renamed from rankFilter
+        const filter = DOM.inputs.categoryFilter?.value || "All";
         const sort = DOM.inputs.sortPuzzles?.value || "dateDesc";
-        const categoryOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 };
+        const categoryOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6 };
 
-        let items = StorageController.getAll().filter(p => {
-          if (p.isCompletionRecord || p.gain === null) return false;
-          if (filter === "Unrated") return !p.category; // Changed from p.rating
-          return filter === "All" || p.category === filter; // Changed from p.rating
+        let items = StorageController.getAll().filter(puzzle => {
+          if (puzzle.isCompletionRecord || puzzle.gain === null) return false;
+          if (filter === "Unrated") return !puzzle.category;
+          return filter === "All" || puzzle.category === filter;
         });
 
         items.sort((a, b) => {
-          if (sort === "category") { // Changed from "rating"
-            const diff = (categoryOrder[a.category] || 6) - (categoryOrder[b.category] || 6);
+          if (sort === "category") {
+            const diff = (categoryOrder[a.category] || 99) - (categoryOrder[b.category] || 99);
             return diff !== 0 ? diff : (parseInt(b.gain) - parseInt(a.gain));
           }
-          if (sort === "severity") return b.gain - a.gain;
+          if (sort === "severity") return parseInt(b.gain) - parseInt(a.gain);
           if (sort === "dateAsc") return new Date(a.date) - new Date(b.date);
-          return new Date(b.date) - new Date(a.date);
+          return new Date(b.date) - new Date(a.date); // default to dateDesc
         });
 
         DOM.display.puzzles.innerHTML = items.map(TemplateUI.puzzleItem).join('');
@@ -736,12 +746,12 @@
       },
 
       async updateTrainingStatus() {
-        const p = State.currentPuzzle;
-        if (!p) return;
+        const puzzle = State.currentPuzzle;
+        if (!puzzle) return;
 
         const setComplete = () => {
           DOM.display.hint.innerHTML = "<span class='text-success'>✔ Puzzle Complete!</span>";
-          StorageController.markSolved(p.id);
+          StorageController.markSolved(puzzle.id);
         };
 
         if (State.trainingGame.game_over()) return setComplete();
@@ -750,38 +760,50 @@
         const { score } = await EngineController.evaluate(State.trainingGame.fen(), 10);
         UIController.updateEvalBar(score);
 
-        const sol = p.solution.split(" ");
-        const cur = State.trainingGame.history().length;
+        const solutionMoves = puzzle.solution.split(" ");
+        const currentMoveCount = State.trainingGame.history().length;
 
-        if (cur >= sol.length) setComplete();
-        else DOM.display.hint.innerHTML = `<strong>Your Turn:</strong> Move ${Math.floor(cur / 2) + 1} of ${Math.ceil(sol.length / 2)}`;
+        if (currentMoveCount >= solutionMoves.length) {
+          setComplete();
+        } else {
+          const moveNumber = Math.floor(currentMoveCount / 2) + 1;
+          const totalMoves = Math.ceil(solutionMoves.length / 2);
+          DOM.display.hint.innerHTML = `<strong>Your Turn:</strong> Move ${moveNumber} of ${totalMoves}`;
+        }
       }
     };
 
     // ── GAME LOGIC ────────────────────────────────────────────────────────────
     const GameLogic = {
       convertPvToSan(fen, pv) {
-        const temp = new Chess(fen);
+        const tempGame = new Chess(fen);
         return pv.split(" ")
-          .map(m => temp.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] || 'q' })?.san)
+          .map(moveStr => tempGame.move({
+            from: moveStr.slice(0, 2),
+            to: moveStr.slice(2, 4),
+            promotion: moveStr[4] || 'q'
+          })?.san)
           .filter(Boolean).join(" ");
       },
 
       handleMoveDrop(source, target) {
-        const sol = State.currentPuzzle.solution.split(" ");
-        const histLen = State.trainingGame.history().length;
-        const temp = new Chess(State.trainingGame.fen());
-        const move = temp.move({ from: source, to: target, promotion: 'q' });
+        const solutionMoves = State.currentPuzzle.solution.split(" ");
+        const historyLength = State.trainingGame.history().length;
 
-        if (!move || move.san !== sol[histLen]) return 'snapback';
+        const tempGame = new Chess(State.trainingGame.fen());
+        const attemptedMove = tempGame.move({ from: source, to: target, promotion: 'q' });
 
-        State.trainingGame.move(move.san);
-        if (State.trainingGame.game_over() || State.trainingGame.history().length >= sol.length) {
+        if (!attemptedMove || attemptedMove.san !== solutionMoves[historyLength]) return 'snapback';
+
+        State.trainingGame.move(attemptedMove.san);
+
+        if (State.trainingGame.game_over() || State.trainingGame.history().length >= solutionMoves.length) {
           return UIController.updateTrainingStatus();
         }
 
+        // Play opponent's response automatically
         setTimeout(() => {
-          State.trainingGame.move(sol[State.trainingGame.history().length]);
+          State.trainingGame.move(solutionMoves[State.trainingGame.history().length]);
           UIController.updateTrainingStatus();
         }, 500);
       },
@@ -810,25 +832,25 @@
         });
 
         UIController.updateTrainingStatus();
-        $('board').scrollIntoView({ block: 'center' });
+        $('board').scrollIntoView({ block: 'center', behavior: 'smooth' });
       },
 
-      async runAnalysis(isBatch = false, gameIdx = 1, totalGames = 1) {
-        const sel = DOM.inputs.gameList.selectedOptions[0];
-        if (!sel) return;
+      async runAnalysis(isBatch = false, gameIndex = 1, totalGames = 1) {
+        const selectedGame = DOM.inputs.gameList.selectedOptions[0];
+        if (!selectedGame) return;
 
         State.isAnalyzing = true;
         if (!isBatch) UIController.toggleAnalysisLock(true);
 
         try {
-          const { pgn, gameId, date, whiteName, blackName, wR, bR } = sel.dataset;
+          const { pgn, gameId, date, whiteName, blackName, wR, bR } = selectedGame.dataset;
           const depth = parseInt(DOM.inputs.lookahead.value || 12, 10);
           const margin = parseInt(DOM.inputs.margin.value, 10);
-          const players = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
-          const lbl = `${isBatch ? gameIdx : 1}/${isBatch ? totalGames : 1}`;
+          const playersStr = `${whiteName} (${wR}) vs ${blackName} (${bR})`;
+          const progressLabel = `${isBatch ? gameIndex : 1}/${isBatch ? totalGames : 1}`;
 
           UIController.log("------------------------------------------", true);
-          UIController.log(`ANALYZING [${lbl}]: ${players}`, true);
+          UIController.log(`ANALYZING [${progressLabel}]: ${playersStr}`, true);
 
           if (isBatch && StorageController.findRecord(gameId, depth, margin)) {
             UIController.log(`SKIPPING: Settings match existing record.`);
@@ -838,11 +860,11 @@
           const game = new Chess();
           if (!game.load_pgn(pgn)) return UIController.log("ERROR: Could not parse PGN.");
 
-          const uSide = blackName.toLowerCase() === DOM.inputs.player.value.toLowerCase() ? 'black' : 'white';
+          const userSide = blackName.toLowerCase() === DOM.inputs.player.value.toLowerCase() ? 'black' : 'white';
           const history = game.history({ verbose: true });
           const tracker = new Chess();
 
-          State.board.orientation(uSide);
+          State.board.orientation(userSide);
           State.board.position('start');
 
           for (let i = 0; i < history.length; i++) {
@@ -850,52 +872,68 @@
             if (!State.isAnalyzing) return UIController.log("Analysis aborted by user.");
 
             DOM.display.hint.innerHTML = `
-              <div class="progress-game">Game ${lbl}</div>
-              <div class="progress-player">${players}</div>
+              <div class="progress-game">Game ${progressLabel}</div>
+              <div class="progress-player">${playersStr}</div>
               <small>Move ${i + 1}/${history.length} (${Math.round(((i + 1) / history.length) * 100)}%)</small>`;
 
             if (tracker.game_over()) break;
 
-            const fenBefore = tracker.fen();
-            const turn = tracker.turn() === 'w' ? 'white' : 'black';
-            const before = await EngineController.evaluate(fenBefore, depth);
+            const fenBeforeMove = tracker.fen();
+            const currentTurnColor = tracker.turn() === 'w' ? 'white' : 'black';
+            const evaluationBefore = await EngineController.evaluate(fenBeforeMove, depth);
 
             tracker.move(history[i]);
             State.board.position(tracker.fen());
 
-            let after;
-            if (tracker.in_checkmate()) after = { score: tracker.turn() === 'b' ? 100000 : -100000, pv: "" };
-            else if (tracker.in_draw() || tracker.in_stalemate()) after = { score: 0, pv: "" };
-            else after = await EngineController.evaluate(tracker.fen(), depth);
+            let evaluationAfter;
+            if (tracker.in_checkmate()) {
+              evaluationAfter = { score: tracker.turn() === 'b' ? 100000 : -100000, pv: "" };
+            } else if (tracker.in_draw() || tracker.in_stalemate()) {
+              evaluationAfter = { score: 0, pv: "" };
+            } else {
+              evaluationAfter = await EngineController.evaluate(tracker.fen(), depth);
+            }
 
-            UIController.updateEvalBar(after.score);
+            UIController.updateEvalBar(evaluationAfter.score);
 
-            const sign = turn === 'white' ? 1 : -1;
-            const gap = sign * (before.score - after.score);
+            const perspectiveSign = currentTurnColor === 'white' ? 1 : -1;
+            const evalDrop = perspectiveSign * (evaluationBefore.score - evaluationAfter.score);
 
-            if (turn === uSide && gap >= margin && (sign * before.score >= margin || sign * after.score < margin)) {
-              const reason = (sign * after.score < margin) ? "BLINDSPOT" : "OPPORTUNITY";
-              UIController.log(`✨ Found ${reason}: Move ${i + 1} (${gap} CP)`);
+            const isPlayerTurn = currentTurnColor === userSide;
+            const isSignificantDrop = evalDrop >= margin;
+            const wasWinningBefore = perspectiveSign * evaluationBefore.score >= margin;
+            const isLosingAfter = perspectiveSign * evaluationAfter.score < margin;
+
+            if (isPlayerTurn && isSignificantDrop && (wasWinningBefore || isLosingAfter)) {
+              const reason = isLosingAfter ? "BLINDSPOT" : "OPPORTUNITY";
+              UIController.log(`✨ Found ${reason}: Move ${i + 1} (${evalDrop} CP)`);
 
               StorageController.save({
                 id: String(Date.now() + i),
-                gameId, date, depth, margin, players, side: uSide,
-                fen: reason === "BLINDSPOT" ? tracker.fen() : fenBefore,
-                preBlunderFen: reason === "BLINDSPOT" ? fenBefore : null,
-                gain: `${gap} CP`, reason,
-                solution: GameLogic.convertPvToSan(reason === "BLINDSPOT" ? tracker.fen() : fenBefore, reason === "BLINDSPOT" ? after.pv : before.pv),
+                gameId, date, depth, margin, players: playersStr, side: userSide,
+                fen: reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
+                preBlunderFen: reason === "BLINDSPOT" ? fenBeforeMove : null,
+                gain: `${evalDrop} CP`,
+                reason,
+                solution: GameLogic.convertPvToSan(
+                  reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
+                  reason === "BLINDSPOT" ? evaluationAfter.pv : evaluationBefore.pv
+                ),
                 isCompletionRecord: false
               });
             }
           }
 
           if (State.isAnalyzing) {
-            StorageController.save({ id: `comp-${gameId}-${depth}-${margin}`, gameId, players, gain: null, depth, margin, date, isCompletionRecord: true });
+            StorageController.save({
+              id: `comp-${gameId}-${depth}-${margin}`,
+              gameId, players: playersStr, gain: null, depth, margin, date, isCompletionRecord: true
+            });
             UIController.log(`COMPLETE: Checked ${history.length} moves.`, true);
           }
 
-        } catch (err) {
-          UIController.log(`FATAL ERROR: ${err.message}`);
+        } catch (error) {
+          UIController.log(`FATAL ERROR: ${error.message}`);
         } finally {
           State.isAnalyzing = false;
           if (!isBatch) {
@@ -938,15 +976,21 @@
           [DOM.inputs.sortPuzzles, 'change', UIController.renderSavedPuzzles],
           [DOM.inputs.uploadDb, 'change', (e) => this.handleUploadDatabase(e)]
         ];
-        events.forEach(([el, type, fn]) => el?.addEventListener(type, fn));
+
+        events.forEach(([element, type, handler]) => element?.addEventListener(type, handler));
       },
 
       bindDelegatedEvents() {
         DOM.display.puzzles.addEventListener('click', e => {
-          const del = e.target.closest('.btn-delete');
-          const row = e.target.closest('.puzzle-clickable');
-          if (del) StorageController.delete(del.dataset.deleteId);
-          else if (row) GameLogic.loadPuzzle(StorageController.getAll().find(x => x.id === row.dataset.id));
+          const deleteBtn = e.target.closest('.btn-delete');
+          const puzzleRow = e.target.closest('.puzzle-clickable');
+
+          if (deleteBtn) {
+            StorageController.delete(deleteBtn.dataset.deleteId);
+          } else if (puzzleRow) {
+            const puzzleToLoad = StorageController.getAll().find(puzzle => puzzle.id === puzzleRow.dataset.id);
+            GameLogic.loadPuzzle(puzzleToLoad);
+          }
         });
 
         DOM.display.classifyControls.addEventListener('click', e => {
@@ -958,49 +1002,65 @@
       },
 
       async handleLoadArchives() {
-        const user = DOM.inputs.player.value.trim();
-        if (!user) return;
-        const archives = await ApiController.fetchArchives(user);
+        const username = DOM.inputs.player.value.trim();
+        if (!username) return;
+        const archives = await ApiController.fetchArchives(username);
         if (!archives) return;
 
-        DOM.inputs.year.innerHTML = [...new Set(archives.map(a => a.year))].map(y => `<option value="${y}">${y}</option>`).join('');
+        const uniqueYears = [...new Set(archives.map(a => a.year))];
+        DOM.inputs.year.innerHTML = uniqueYears.map(y => `<option value="${y}">${y}</option>`).join('');
+
         DOM.inputs.year.onchange = () => {
-          DOM.inputs.month.innerHTML = archives.filter(a => a.year === DOM.inputs.year.value).map(a => `<option value="${a.month}">${a.month}</option>`).join('');
+          const monthsForYear = archives.filter(a => a.year === DOM.inputs.year.value);
+          DOM.inputs.month.innerHTML = monthsForYear.map(a => `<option value="${a.month}">${a.month}</option>`).join('');
         };
-        DOM.inputs.year.onchange();
+
+        DOM.inputs.year.onchange(); // trigger initial population
       },
 
       async handleLoadGames() {
         const data = await ApiController.fetchGames(DOM.inputs.player.value, DOM.inputs.year.value, DOM.inputs.month.value);
         if (!data?.games) return DOM.inputs.gameList.innerHTML = "";
 
-        DOM.inputs.gameList.innerHTML = data.games.reverse().map((g, i) => {
-          const id = `${g.white.username}-${g.black.username}-${g.end_time}`;
-          const safePgn = g.pgn.replace(/"/g, '&quot;');
-          const date = new Date(g.end_time * 1000).toLocaleDateString();
-          return `<option value="${i}" data-pgn="${safePgn}" data-game-id="${id}" data-date="${date}" data-white-name="${g.white.username}" data-black-name="${g.black.username}" data-w-r="${g.white.rating || '?'}" data-b-r="${g.black.rating || '?'}"></option>`;
+        DOM.inputs.gameList.innerHTML = data.games.reverse().map((game, index) => {
+          const gameId = `${game.white.username}-${game.black.username}-${game.end_time}`;
+          const safePgn = game.pgn.replace(/"/g, '&quot;');
+          const dateStr = new Date(game.end_time * 1000).toLocaleDateString();
+          return `<option value="${index}" data-pgn="${safePgn}" data-game-id="${gameId}" data-date="${dateStr}" data-white-name="${game.white.username}" data-black-name="${game.black.username}" data-w-r="${game.white.rating || '?'}" data-b-r="${game.black.rating || '?'}"></option>`;
         }).join('');
+
         UIController.updateGameListStatus();
       },
 
       handleAnalyze() {
-        const sel = DOM.inputs.gameList.selectedOptions[0];
-        if (!sel) return;
-        const saved = StorageController.findPuzzle(sel.dataset.gameId, parseInt(DOM.inputs.lookahead.value || 12, 10), parseInt(DOM.inputs.margin.value, 10));
-        saved ? (UIController.log("Match found in local storage. Loading...", true), GameLogic.loadPuzzle(saved)) : GameLogic.runAnalysis(false);
+        const selectedOption = DOM.inputs.gameList.selectedOptions[0];
+        if (!selectedOption) return;
+
+        const existingPuzzle = StorageController.findPuzzle(
+          selectedOption.dataset.gameId,
+          parseInt(DOM.inputs.lookahead.value || 12, 10),
+          parseInt(DOM.inputs.margin.value, 10)
+        );
+
+        if (existingPuzzle) {
+          UIController.log("Match found in local storage. Loading...", true);
+          GameLogic.loadPuzzle(existingPuzzle);
+        } else {
+          GameLogic.runAnalysis(false);
+        }
       },
 
       async handleBatch() {
-        const opts = Array.from(DOM.inputs.gameList.options);
-        if (!opts.length) return;
+        const options = Array.from(DOM.inputs.gameList.options);
+        if (!options.length) return;
 
         State.isBatchRunning = true;
         UIController.toggleAnalysisLock(true);
-        UIController.log(`Starting batch analysis of ${opts.length} games...`, true);
+        UIController.log(`Starting batch analysis of ${options.length} games...`, true);
 
-        for (let i = 0; i < opts.length && State.isBatchRunning; i++) {
+        for (let i = 0; i < options.length && State.isBatchRunning; i++) {
           DOM.inputs.gameList.selectedIndex = i;
-          await GameLogic.runAnalysis(true, i + 1, opts.length);
+          await GameLogic.runAnalysis(true, i + 1, options.length);
         }
 
         State.isBatchRunning = false;
@@ -1008,74 +1068,91 @@
         DOM.display.hint.textContent = "Batch complete. Select a puzzle to begin.";
       },
 
-      handleStepBack() { State.trainingGame.undo(); State.trainingGame.undo(); UIController.updateTrainingStatus(); },
+      handleStepBack() {
+        State.trainingGame.undo();
+        State.trainingGame.undo();
+        UIController.updateTrainingStatus();
+      },
 
       async handleStepForward() {
-        const sol = State.currentPuzzle?.solution.split(" ");
-        let cur = State.trainingGame.history().length;
+        const solutionMoves = State.currentPuzzle?.solution.split(" ");
+        let currentMoveIndex = State.trainingGame.history().length;
 
-        if (sol && cur < sol.length) {
-          State.trainingGame.move(sol[cur]);
+        if (solutionMoves && currentMoveIndex < solutionMoves.length) {
+          State.trainingGame.move(solutionMoves[currentMoveIndex]);
           State.board.position(State.trainingGame.fen());
-          if (++cur < sol.length) {
-            await new Promise(r => setTimeout(r, 600));
-            State.trainingGame.move(sol[cur]);
+
+          if (++currentMoveIndex < solutionMoves.length) {
+            await new Promise(resolve => setTimeout(resolve, 600));
+            State.trainingGame.move(solutionMoves[currentMoveIndex]);
           }
           UIController.updateTrainingStatus();
         }
       },
 
       handleShowHint() {
-        const sol = State.currentPuzzle?.solution.split(" ");
-        const cur = State.trainingGame.history().length;
-        if (sol && cur < sol.length) {
-          const move = new Chess(State.trainingGame.fen()).move(sol[cur]);
-          if (move) DOM.display.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${{ p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' }[move.piece] || 'piece'}</u> on <strong>${move.from}</strong>`;
+        const solutionMoves = State.currentPuzzle?.solution.split(" ");
+        const currentMoveIndex = State.trainingGame.history().length;
+
+        if (solutionMoves && currentMoveIndex < solutionMoves.length) {
+          const moveData = new Chess(State.trainingGame.fen()).move(solutionMoves[currentMoveIndex]);
+          if (moveData) {
+            const pieceNames = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+            DOM.display.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${pieceNames[moveData.piece] || 'piece'}</u> on <strong>${moveData.from}</strong>`;
+          }
         }
       },
 
       handleResetPuzzle() {
-        const p = State.currentPuzzle;
-        if (!p) return;
+        const puzzle = State.currentPuzzle;
+        if (!puzzle) return;
 
         const animId = ++State.currentAnimationId;
-        State.trainingGame.load(p.fen);
+        State.trainingGame.load(puzzle.fen);
 
         UIController.updateTrainingStatus();
         UIController.updateEvalBar(0);
 
-        if (p.reason === "BLINDSPOT" && p.preBlunderFen) {
-          State.board.position(p.preBlunderFen, false);
-          if (State.currentAnimationId === animId) State.board.position(p.fen, true);
+        if (puzzle.reason === "BLINDSPOT" && puzzle.preBlunderFen) {
+          State.board.position(puzzle.preBlunderFen, false);
+          if (State.currentAnimationId === animId) State.board.position(puzzle.fen, true);
         } else {
-          State.board.position(p.fen, false);
+          State.board.position(puzzle.fen, false);
         }
       },
 
       async handleShowSolution() {
-        const p = State.currentPuzzle;
-        if (!p) return;
+        const puzzle = State.currentPuzzle;
+        if (!puzzle) return;
 
-        const animId = ++State.currentAnimationId;
-        State.trainingGame.load(p.fen);
-        State.board.position(p.fen, false);
-        await new Promise(r => setTimeout(r, 100));
+        const currentAnimId = ++State.currentAnimationId;
+        State.trainingGame.load(puzzle.fen);
+        State.board.position(puzzle.fen, false);
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-        for (const m of p.solution.split(" ")) {
-          if (State.currentPuzzle.id !== p.id || animId !== State.currentAnimationId) return;
-          if (State.trainingGame.move(m)) {
+        for (const move of puzzle.solution.split(" ")) {
+          // Break loop if the puzzle changed or reset was clicked
+          if (State.currentPuzzle.id !== puzzle.id || currentAnimId !== State.currentAnimationId) return;
+
+          if (State.trainingGame.move(move)) {
             State.board.position(State.trainingGame.fen());
             await UIController.updateTrainingStatus();
           }
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       },
 
       handleCopyFen() {
         navigator.clipboard.writeText(State.trainingGame.fen()).then(() => {
-          const btn = DOM.buttons.copyFen, orig = btn.textContent;
-          btn.textContent = "Copied!"; btn.style.background = "var(--green)";
-          setTimeout(() => { btn.textContent = orig; btn.style.background = ""; }, 2000);
+          const btn = DOM.buttons.copyFen;
+          const originalText = btn.textContent;
+          btn.textContent = "Copied!";
+          btn.style.background = "var(--green)";
+
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = "";
+          }, 2000);
         });
       },
 
@@ -1084,41 +1161,47 @@
         if (!rawData) return console.error("No data found to backup!");
 
         try {
-          const url = URL.createObjectURL(new Blob([JSON.stringify(JSON.parse(rawData), null, 2)], { type: 'application/json' }));
+          const jsonData = JSON.stringify(JSON.parse(rawData), null, 2);
+          const blobUrl = URL.createObjectURL(new Blob([jsonData], { type: 'application/json' }));
+
           const link = document.createElement('a');
-          link.href = url;
+          link.href = blobUrl;
           link.download = `blindspot_backup_${new Date().toISOString().slice(0, 10)}.json`;
           link.click();
-          URL.revokeObjectURL(url);
-        } catch (e) {
-          UIController.log("Error formatting JSON: " + e.message);
+
+          URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+          UIController.log("Error formatting JSON: " + error.message);
         }
       },
 
-      handleUploadDatabase(e) {
-        const file = e.target.files[0];
+      handleUploadDatabase(event) {
+        const file = event.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = ({ target }) => {
           try {
-            const imported = JSON.parse(target.result);
-            if (!Array.isArray(imported)) throw new Error("Invalid format.");
+            const importedData = JSON.parse(target.result);
+            if (!Array.isArray(importedData)) throw new Error("Invalid format.");
 
-            const existing = StorageController.getAll();
-            const existingIds = new Set(existing.map(p => String(p.id)));
-            const newItems = imported.filter(p => {
-              p.id = String(p.id);
-              return !existingIds.has(p.id);
+            const existingData = StorageController.getAll();
+            const existingIds = new Set(existingData.map(puzzle => String(puzzle.id)));
+
+            const newItems = importedData.filter(puzzle => {
+              puzzle.id = String(puzzle.id);
+              return !existingIds.has(puzzle.id);
             });
 
-            localStorage.setItem(StorageController.KEY, JSON.stringify([...existing, ...newItems]));
+            localStorage.setItem(StorageController.KEY, JSON.stringify([...existingData, ...newItems]));
+
             UIController.log(`Imported ${newItems.length} new puzzles!`, true);
             UIController.renderSavedPuzzles();
             UIController.updateGameListStatus();
-            e.target.value = '';
-          } catch (err) {
-            UIController.log(`Upload failed: ${err.message}`);
+
+            event.target.value = ''; // Reset input
+          } catch (error) {
+            UIController.log(`Upload failed: ${error.message}`);
           }
         };
         reader.readAsText(file);
