@@ -468,18 +468,18 @@
 
       <div class="puzzles-header">
         <h3>Puzzles</h3>
-        <select id="sortPuzzles" class="filter-select">
-          <option value="severity" selected>Severity (High to Low)</option>
-          <option value="dateDesc">Date (Newest)</option>
-          <option value="dateAsc">Date (Oldest)</option>
-        </select>
         <select id="categoryFilter" class="filter-select">
-          <option value="All">All Puzzles</option>
+          <option value="All">All</option>
           <option value="1">Rotation</option>
           <option value="3">Overtrained</option>
           <option value="5">Too complex</option>
           <option value="6">Transit</option>
-          <option value="Unrated">Unclassified</option>
+          <option value="None">Unclassified</option>
+        </select>
+        <select id="sortPuzzles" class="filter-select">
+          <option value="severity" selected>Severity (High to Low)</option>
+          <option value="dateDesc">Date (Newest)</option>
+          <option value="dateAsc">Date (Oldest)</option>
         </select>
         <span id="puzzleCount">(0)</span>
         <div class="bulk-action-row" style="display: flex; gap: 0.5rem; align-items: center;">
@@ -488,7 +488,6 @@
             <option value="1">Rotation</option>
             <option value="3">Overtrained</option>
             <option value="5">Too complex</option>
-            <option value="6">Transit</option>
           </select>
           <button id="btnBulkMove" class="btn-sm btn-slate" style="width: auto; padding: 0.2rem 0.5rem;">Apply</button>
         </div>
@@ -751,12 +750,24 @@
 
       toggleAnalysisLock(isLocked) {
         const displayState = isLocked ? 'none' : 'block';
-        Object.values(DOM.buttons).forEach(btn => { if (btn !== DOM.buttons.stop) btn.style.display = displayState; });
-        Object.values(DOM.inputs).forEach(input => { if (input === DOM.inputs.uploadDb) return; input.style.display = displayState; });
+        Object.values(DOM.buttons).forEach(btn => {
+          if (btn !== DOM.buttons.stop) btn.style.display = displayState;
+        });
+        Object.values(DOM.inputs).forEach(input => {
+          if (input === DOM.inputs.uploadDb ||
+            input === DOM.inputs.categoryFilter ||
+            input === DOM.inputs.sortPuzzles) return;
+          input.style.display = displayState;
+        });
         document.querySelectorAll('.settings-row label').forEach(label => label.style.display = displayState);
-
         DOM.buttons.stop.style.display = isLocked ? 'block' : 'none';
-        if (isLocked) DOM.display.puzzleHeader.style.display = 'none';
+        DOM.display.classifyControls.style.display = isLocked ? 'none' : 'flex';
+        if (isLocked) {
+          DOM.display.puzzleHeader.style.display = 'none';
+          DOM.inputs.categoryFilter.value = "None";
+          DOM.inputs.sortPuzzles.value = "severity";
+          UIController.renderSavedPuzzles();
+        }
       },
 
       updateGameListStatus() {
@@ -776,7 +787,7 @@
 
         let items = StorageController.getAll().filter(puzzle => {
           if (puzzle.isCompletionRecord || puzzle.gain === null) return false;
-          if (filter === "Unrated") return !puzzle.category;
+          if (filter === "None") return !puzzle.category;
           return filter === "All" || puzzle.category === filter;
         });
 
@@ -1259,18 +1270,29 @@
 
       handleBulkMove() {
         const newCat = DOM.inputs.bulkCategory.value;
-        if (!newCat) return;
+        const currentFilter = DOM.inputs.categoryFilter.value; // Get current source
+        if (!newCat) {
+          alert("Select destination category.");
+          return;
+        }
 
         // Identify IDs of puzzles currently rendered in the DOM
         const visibleIds = Array.from(DOM.display.puzzles.querySelectorAll('.puzzle-clickable'))
           .map(el => el.dataset.id);
 
         if (visibleIds.length === 0) {
-          UIController.log("No puzzles displayed to move.");
+          alert("No puzzles to move.");
           return;
         }
 
-        if (confirm(`Move ${visibleIds.length} puzzle${visibleIds.length == 1 ? '' : 's'} to ${CATEGORIES[newCat]}?`)) {
+        // Determine the "from" label based on the active filter
+        const fromLabel = currentFilter === "All" ? "All Puzzles" :
+          currentFilter === "None" ? "Unclassified" :
+            CATEGORIES[currentFilter];
+
+        const confirmMsg = `Move ${visibleIds.length} puzzle${visibleIds.length == 1 ? '' : 's'} from "${fromLabel}" to "${CATEGORIES[newCat]}"?`;
+
+        if (confirm(confirmMsg)) {
           StorageController.bulkSetCategory(visibleIds, newCat);
           DOM.inputs.bulkCategory.value = ""; // Reset dropdown
         }
