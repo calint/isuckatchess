@@ -47,11 +47,11 @@ it takes time before the answers come instantly. To understand why alternative
 moves fail, copy the position's FEN, paste it into
 <https://lichess.org/analysis/>, and experiment with different replies.
 
-Ensure you understand the reasoning behind the correct solution, keeping in mind
-that some puzzles may have multiple winning lines and do not need to be solved
-until completion. Once you successfully solve a puzzle, move it to Transit from
-which you will bulk move them into Rotation again. This will make it easier to
-select next puzzle being first in the list.
+Make sure you understand the logic behind the solution, keeping in mind that
+some puzzles may offer multiple winning lines and do not require playing through
+to the very end. Once you have successfully solved a puzzle, move it to the
+Transit category. From there, you can move them back into Rotation in bulk,
+ensuring the next puzzle appears at the top of your list for easier selection.
 
 ## step 4, overtraining
 
@@ -59,7 +59,7 @@ If you instantly recognize a puzzle and know the first few moves from memory
 without actively calculating, the puzzle has been overtrained. Rote memorization
 bypasses the calculation practice you need. If this happens, categorize it as
 Overtrained so you can set it aside. You can revisit this batch later when the
-specific positions have faded from your memory.
+specific positions may have faded from your memory.
 
 ## step 5, play long games
 
@@ -71,18 +71,19 @@ is better, the sweet spot for improvement is typically a 60-minute game.
 
 After playing a new game, retrieve it using Fetch Games and run the analysis.
 Switch your filter back to Uncategorized and repeat the process from Step 1.
-Once all your active puzzles have been moved into the next Rotation batch,
-filter for that new rotation and continue your training.
+Once all your active puzzles have been moved into the Rotation batch, filter for
+that and continue your training.
 
 Eventually, most puzzles will become Overtrained. Periodically scan this
 category; if the first move no longer immediately "pops" into your mind from
-memory, move the puzzle back into an active Rotation.
+memory, move the puzzle back into Rotation.
 
 ## step 7, advancing
 
-Review your Too Complex 1 puzzles and move any that offer a now-understandable
-gain into an active Rotation. Puzzles that remain difficult or lack a clear,
-instructional advantage should be moved to Too Complex 2 for later review.
+Review your Too Complex puzzles and move any that now offer an understandable
+advantage into the Rotation. For puzzles that remain difficult or lack a clear
+instructional benefit, move them to Transit first; once you have finished
+reviewing, you can move them back to Too Complex in bulk.
 
 ## openings
 
