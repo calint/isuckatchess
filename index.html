@@ -436,12 +436,10 @@
 
       <div class="classify-row" id="classifyControls">
         <span class="classify-label">Classify:</span>
-        <button data-category="1" class="btn-classify btn-green grow-1">Rotation 1</button>
-        <button data-category="2" class="btn-classify btn-green grow-1">Rotation 2</button>
-        <button data-category="3" class="btn-classify btn-orange grow-1">Overtrained 1</button>
-        <button data-category="4" class="btn-classify btn-orange grow-1">Overtrained 2</button>
-        <button data-category="5" class="btn-classify btn-black grow-1">Too complex 1</button>
-        <button data-category="6" class="btn-classify btn-black grow-1">Too complex 2</button>
+        <button data-category="1" class="btn-classify btn-green grow-1">Rotation</button>
+        <button data-category="3" class="btn-classify btn-orange grow-1">Overtrained</button>
+        <button data-category="5" class="btn-classify btn-red grow-1">Too complex</button>
+        <button data-category="6" class="btn-classify btn-black grow-1">Transit</button>
       </div>
 
       <div class="puzzles-header">
@@ -453,15 +451,23 @@
         </select>
         <select id="categoryFilter" class="filter-select">
           <option value="All">All Puzzles</option>
-          <option value="1">Rotation 1</option>
-          <option value="2">Rotation 2</option>
-          <option value="3">Overtrained 1</option>
-          <option value="4">Overtrained 2</option>
-          <option value="5">Too complex 1</option>
-          <option value="6">Too complex 2</option>
+          <option value="1">Rotation</option>
+          <option value="3">Overtrained</option>
+          <option value="5">Too complex</option>
+          <option value="6">Transit</option>
           <option value="Unrated">Unclassified</option>
         </select>
         <span id="puzzleCount">(0)</span>
+        <div class="bulk-action-row" style="display: flex; gap: 0.5rem; align-items: center;">
+          <select id="bulkCategory" class="filter-select">
+            <option value="" disabled selected>Move filtered to...</option>
+            <option value="1">Rotation</option>
+            <option value="3">Overtrained</option>
+            <option value="5">Too complex</option>
+            <option value="6">Transit</option>
+          </select>
+          <button id="btnBulkMove" class="btn-sm btn-slate" style="width: auto; padding: 0.2rem 0.5rem;">Apply</button>
+        </div>
       </div>
       <div id="puzzles"></div>
     </section>
@@ -472,9 +478,10 @@
   <script src="lib/chess.min.js"></script>
   <script>
     const CATEGORIES = {
-      '1': 'Rotation 1', '2': 'Rotation 2',
-      '3': 'Overtrained 1', '4': 'Overtrained 2',
-      '5': 'Too Complex 1', '6': 'Too Complex 2'
+      '1': 'Rotation',
+      '3': 'Overtrained',
+      '5': 'Too Complex',
+      '6': 'Transit'
     };
 
     // ── STATE & DOM ───────────────────────────────────────────────────────────
@@ -496,14 +503,15 @@
         player: $('player'), year: $('year'), month: $('month'),
         lookahead: $('lookahead'), margin: $('margin'), gameList: $('gameList'),
         categoryFilter: $('categoryFilter'), sortPuzzles: $('sortPuzzles'),
-        uploadDb: $('uploadDatabase')
+        uploadDb: $('uploadDatabase'), bulkCategory: $('bulkCategory')
       };
       DOM.buttons = {
         reload: $('btnReload'), load: $('btnLoad'), analyze: $('btnAnalyze'),
         batch: $('btnBatch'), stop: $('btnStop'), clearLog: $('btnClearLog'),
         downloadDb: $('btnDownloadDatabase'), uploadDb: $('btnUploadPuzzles'),
         prev: $('btnPrev'), next: $('btnNext'), hint: $('btnHint'),
-        reset: $('btnReset'), solution: $('btnSolution'), copyFen: $('btnCopyFen')
+        reset: $('btnReset'), solution: $('btnSolution'), copyFen: $('btnCopyFen'),
+        bulkMove: $('btnBulkMove')
       };
       DOM.display = {
         log: $('log'), hint: $('hint'), evalFill: $('eval-fill'),
@@ -604,6 +612,24 @@
           puzzle.category = category;
           this._persist(items);
           UIController.log(`${puzzle.players} → ${CATEGORIES[category] || category}`);
+        }
+      },
+
+      bulkSetCategory(ids, category) {
+        if (!category || !ids.length) return;
+        const items = this.getAll();
+        let count = 0;
+
+        items.forEach(puzzle => {
+          if (ids.includes(puzzle.id)) {
+            puzzle.category = category;
+            count++;
+          }
+        });
+
+        if (count > 0) {
+          this._persist(items);
+          UIController.log(`Bulk Update: ${count} puzzles moved to ${CATEGORIES[category]}`);
         }
       }
     };
@@ -973,7 +999,8 @@
           [DOM.buttons.copyFen, 'click', () => this.handleCopyFen()],
           [DOM.inputs.categoryFilter, 'change', UIController.renderSavedPuzzles],
           [DOM.inputs.sortPuzzles, 'change', UIController.renderSavedPuzzles],
-          [DOM.inputs.uploadDb, 'change', (e) => this.handleUploadDatabase(e)]
+          [DOM.inputs.uploadDb, 'change', (e) => this.handleUploadDatabase(e)],
+          [DOM.buttons.bulkMove, 'click', () => this.handleBulkMove()]
         ];
 
         events.forEach(([element, type, handler]) => element?.addEventListener(type, handler));
@@ -1204,6 +1231,25 @@
           }
         };
         reader.readAsText(file);
+      },
+
+      handleBulkMove() {
+        const newCat = DOM.inputs.bulkCategory.value;
+        if (!newCat) return;
+
+        // Identify IDs of puzzles currently rendered in the DOM
+        const visibleIds = Array.from(DOM.display.puzzles.querySelectorAll('.puzzle-clickable'))
+          .map(el => el.dataset.id);
+
+        if (visibleIds.length === 0) {
+          UIController.log("No puzzles displayed to move.");
+          return;
+        }
+
+        if (confirm(`Move ${visibleIds.length} puzzles to ${CATEGORIES[newCat]}?`)) {
+          StorageController.bulkSetCategory(visibleIds, newCat);
+          DOM.inputs.bulkCategory.value = ""; // Reset dropdown
+        }
       }
     };
 

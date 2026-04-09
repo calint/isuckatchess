@@ -33,14 +33,14 @@ Open each puzzle and click Solution to review it. If the sequence ends in an
 overly complicated position without a clear material or positional gain,
 categorize it as Too complex. You can return to these later after practicing
 more obvious tactics. Legitimate blunders from either you or your opponent
-should be categorized as Rotation 1.
+should be categorized as Rotation.
 
 ## step 3, practice
 
-Filter the view to show Rotation 1 puzzles, sort by severity and begin
-practicing. Do not get discouraged if they seem difficult; they are specifically
-targeting your personal blind spots. Spend about a minute on each position. If
-you can't find the solution, click Hint to see which piece to move.
+Filter the view to show Rotation puzzles, sort by severity and begin practicing.
+Do not get discouraged if they seem difficult; they are specifically targeting
+your personal blind spots. Spend about a minute on each position. If you can't
+find the solution, click Hint to see which piece to move.
 
 Calculation gets easier with practice; much like learning multiplication tables,
 it takes time before the answers come instantly. To understand why alternative
@@ -49,9 +49,9 @@ moves fail, copy the position's FEN, paste it into
 
 Ensure you understand the reasoning behind the correct solution, keeping in mind
 that some puzzles may have multiple winning lines and do not need to be solved
-until completion. Once you successfully solve a puzzle, re-categorize it as
-Rotation 2. You will move on to the Rotation 2 collection once the Rotation 1
-batch is complete.
+until completion. Once you successfully solve a puzzle, move it to Transit from
+which you will bulk move them into Rotation again. This will make it easier to
+select next puzzle being first in the list.
 
 ## step 4, overtraining
 
