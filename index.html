@@ -362,6 +362,30 @@
     .hidden {
       display: none;
     }
+
+    @media (max-width: 768px) {
+
+      /* Stack the main left and right columns vertically */
+      main {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        gap: 1rem;
+      }
+
+      /* Allow inputs and buttons to wrap onto new lines instead of squishing */
+      .row,
+      .row-tight,
+      .settings-row,
+      .classify-row,
+      .board-controls {
+        flex-wrap: wrap;
+      }
+
+      /* Make sure the eval bar doesn't take up too much width on small screens */
+      #eval-bar {
+        width: 1.5rem;
+      }
+    }
   </style>
 </head>
 
