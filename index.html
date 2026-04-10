@@ -966,7 +966,7 @@
             const evaluationBefore = await EngineController.evaluate(fenBeforeMove, depth);
 
             tracker.move(history[i]);
-            State.board.position(tracker.fen());
+            State.board.position(tracker.fen(), true);
 
             let evaluationAfter;
             if (tracker.in_checkmate()) {
