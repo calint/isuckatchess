@@ -550,7 +550,7 @@
           ? `<span class="rank-badge">${CATEGORIES[puzzle.category] || puzzle.category}</span>`
           : "";
         const isBlunder = puzzle.reason === 'BLINDSPOT';
-        const icon = isBlunder ? '[??]' : '[!]';
+        const icon = isBlunder ? '[?]' : '[!]';
         const title = isBlunder ? 'Blunder' : 'Missed Opportunity';
 
         return `
