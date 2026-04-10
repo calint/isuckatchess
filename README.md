@@ -24,9 +24,6 @@ been missing.
 * fetch games for specified year and month
 * click Batch All to analyze your games
 
-The engine will process the games while displaying a progress animation. Once
-finished, adjust your filters to sort by Severity and Uncategorized.
-
 ## step 2, categorize
 
 Open each puzzle and click Solution to review it. If the sequence ends in an
