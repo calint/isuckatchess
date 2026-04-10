@@ -598,10 +598,14 @@
       },
 
       findPuzzle: (gameId, depth, margin) =>
-        StorageController.getAll().find(p => p.gameId === gameId && p.depth === depth && p.margin === margin),
+        StorageController.getAll().find(p =>
+          p.gameId === gameId && p.depth === depth && p.margin === margin
+        ),
 
       findRecord: (gameId, depth, margin) =>
-        StorageController.getRecords().find(r => r.gameId === gameId && r.depth === depth && r.margin === margin),
+        StorageController.getRecords().find(r =>
+          r.gameId === gameId && r.depth === depth && r.margin === margin
+        ),
 
       delete(id) {
         const targetId = id;
@@ -1049,7 +1053,10 @@
           [DOM.buttons.load, 'click', () => this.handleLoadGames()],
           [DOM.buttons.analyze, 'click', () => this.handleAnalyze()],
           [DOM.buttons.batch, 'click', () => this.handleBatch()],
-          [DOM.buttons.stop, 'click', () => { State.isBatchRunning = State.isAnalyzing = false; UIController.log("Stopping..."); }],
+          [DOM.buttons.stop, 'click', () => {
+            State.isBatchRunning = State.isAnalyzing = false;
+            UIController.log("Stopping...");
+          }],
           [DOM.buttons.clearLog, 'click', UIController.clearLog],
           [DOM.buttons.downloadDb, 'click', () => this.handleDownloadDatabase()],
           [DOM.buttons.uploadDb, 'click', () => DOM.inputs.uploadDb.click()],
@@ -1114,7 +1121,15 @@
           const gameId = `${game.white.username}-${game.black.username}-${game.end_time}`;
           const safePgn = game.pgn.replace(/"/g, '&quot;');
           const dateStr = new Date(game.end_time * 1000).toLocaleDateString();
-          return `<option value="${index}" data-pgn="${safePgn}" data-game-id="${gameId}" data-date="${dateStr}" data-white-name="${game.white.username}" data-black-name="${game.black.username}" data-w-r="${game.white.rating || '?'}" data-b-r="${game.black.rating || '?'}"></option>`;
+          return `<option value="${index}" 
+            data-pgn="${safePgn}" 
+            data-game-id="${gameId}" 
+            data-date="${dateStr}" 
+            data-white-name="${game.white.username}" 
+            data-black-name="${game.black.username}" 
+            data-w-r="${game.white.rating || '?'}" 
+            data-b-r="${game.black.rating || '?'}">
+          </option>`;
         }).join('');
 
         UIController.updateGameListStatus();
@@ -1340,7 +1355,8 @@
           currentFilter === "None" ? "Unclassified" :
             CATEGORIES[currentFilter];
 
-        const confirmMsg = `Move ${visibleIds.length} puzzle${visibleIds.length == 1 ? '' : 's'} from "${fromLabel}" to "${CATEGORIES[newCat]}"?`;
+        const confirmMsg = `Move ${visibleIds.length} puzzle${visibleIds.length == 1 ? '' : 's'
+          } from "${fromLabel}" to "${CATEGORIES[newCat]}"?`;
 
         if (confirm(confirmMsg)) {
           StorageController.bulkSetCategory(visibleIds, newCat);
