@@ -558,7 +558,7 @@
             <div class="puzzle-row">
               <div class="puzzle-clickable" data-id="${puzzle.id}">
                 <strong><span class="type-icon" title="${title}">${icon}</span>${puzzle.players}</strong>${badge}<br>
-                <small>${puzzle.date} | ${puzzle.gain} CP at depth ${puzzle.depth}</small>
+                <small>${puzzle.date} | Gain: ${puzzle.gain} | Depth: ${puzzle.depth} | Threshold: ${puzzle.margin}</small>
               </div>
               <button data-delete-id="${puzzle.id}" class="btn-delete">Delete</button>
             </div>
@@ -604,7 +604,7 @@
         StorageController.getRecords().find(r => r.gameId === gameId && r.depth === depth && r.margin === margin),
 
       delete(id) {
-        const targetId = String(id);
+        const targetId = id;
         const allPuzzles = this.getAll();
 
         // Find the puzzle before deleting to get its gameId
