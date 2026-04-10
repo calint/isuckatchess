@@ -558,7 +558,7 @@
             <div class="puzzle-row">
               <div class="puzzle-clickable" data-id="${puzzle.id}">
                 <strong><span class="type-icon" title="${title}">${icon}</span>${puzzle.players}</strong>${badge}<br>
-                <small>${puzzle.date} | ${puzzle.gain} at depth ${puzzle.depth}</small>
+                <small>${puzzle.date} | ${puzzle.gain} CP at depth ${puzzle.depth}</small>
               </div>
               <button data-delete-id="${puzzle.id}" class="btn-delete">Delete</button>
             </div>
@@ -876,7 +876,7 @@
         DOM.display.puzzleHeader.style.display = 'block';
         DOM.display.phPlayers.textContent = puzzle.players;
         DOM.display.phMeta.textContent = `${puzzle.date} | Perspective: ${puzzle.side.toUpperCase()}`;
-        DOM.display.phEval.textContent = isBlunder ? `You blundered. Show opponent move!` : `Opportunity to improve position by ${puzzle.gain}`;
+        DOM.display.phEval.textContent = isBlunder ? `Opportunity for opponent to gain ${puzzle.gain}.` : `Missed opportunity to improve position by ${puzzle.gain}.`;
 
         const startFen = (isBlunder && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
 
@@ -965,6 +965,7 @@
 
             if (isPlayerTurn && isSignificantDrop && (wasWinningBefore || isLosingAfter)) {
               const reason = isLosingAfter ? "BLINDSPOT" : "OPPORTUNITY";
+              const gainValue = parseInt(evalDrop, 10);
               UIController.log(`✨ Found ${reason}: Move ${i + 1} (${evalDrop} CP)`);
 
               StorageController.save({
@@ -972,7 +973,7 @@
                 gameId, date, depth, margin, players: playersStr, side: userSide,
                 fen: reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
                 preBlunderFen: reason === "BLINDSPOT" ? fenBeforeMove : null,
-                gain: `${evalDrop} CP`,
+                gain: gainValue,
                 reason,
                 solution: GameLogic.convertPvToSan(
                   reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
