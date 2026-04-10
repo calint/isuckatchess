@@ -568,13 +568,20 @@
 
     // ── STORAGE ───────────────────────────────────────────────────────────────
     const StorageController = {
-      KEY: 'chess_puzzles',
+      PUZZLE_KEY: 'chess_puzzles',
+      RECORD_KEY: 'chess_completion_records',
 
-      getAll: () => JSON.parse(localStorage.getItem(StorageController.KEY) || '[]'),
+      getAll: () => JSON.parse(localStorage.getItem(StorageController.PUZZLE_KEY) || '[]'),
+      getRecords: () => JSON.parse(localStorage.getItem(StorageController.RECORD_KEY) || '[]'),
 
       _persist(items) {
-        localStorage.setItem(this.KEY, JSON.stringify(items));
+        localStorage.setItem(this.PUZZLE_KEY, JSON.stringify(items));
         UIController.renderSavedPuzzles();
+        UIController.updateGameListStatus();
+      },
+
+      _persistRecords(records) {
+        localStorage.setItem(this.RECORD_KEY, JSON.stringify(records));
         UIController.updateGameListStatus();
       },
 
@@ -584,30 +591,42 @@
         this._persist(items);
       },
 
-      _find: (gameId, depth, margin, isRecordCheck) =>
-        StorageController.getAll().find(puzzle =>
-          puzzle.gameId === gameId && puzzle.depth === depth && puzzle.margin === margin &&
-          (isRecordCheck ? puzzle.isCompletionRecord : (puzzle.gain !== null && !puzzle.isCompletionRecord))
-        ),
+      saveRecord(record) {
+        const records = this.getRecords().filter(r => r.gameId !== record.gameId);
+        records.push(record);
+        this._persistRecords(records);
+      },
 
-      findPuzzle: (id, depth, margin) => StorageController._find(id, depth, margin, false),
-      findRecord: (id, depth, margin) => StorageController._find(id, depth, margin, true),
+      findPuzzle: (gameId, depth, margin) =>
+        StorageController.getAll().find(p => p.gameId === gameId && p.depth === depth && p.margin === margin),
+
+      findRecord: (gameId, depth, margin) =>
+        StorageController.getRecords().find(r => r.gameId === gameId && r.depth === depth && r.margin === margin),
 
       delete(id) {
         const targetId = String(id);
-        let items = this.getAll();
-        const targetPuzzle = items.find(puzzle => puzzle.id === targetId);
-        if (!targetPuzzle) return;
+        const allPuzzles = this.getAll();
 
-        items = items.filter(puzzle => puzzle.id !== targetId);
+        // Find the puzzle before deleting to get its gameId
+        const puzzleToDelete = allPuzzles.find(p => p.id === targetId);
+        if (!puzzleToDelete) return;
 
-        // Clean up metadata record if no active puzzles remain for this specific game
-        if (!items.some(puzzle => puzzle.gameId === targetPuzzle.gameId && puzzle.gain !== null)) {
-          items = items.filter(puzzle => puzzle.gameId !== targetPuzzle.gameId);
+        const gameId = puzzleToDelete.gameId;
+
+        // Filter out the deleted puzzle
+        const remainingPuzzles = allPuzzles.filter(puzzle => puzzle.id !== targetId);
+        this._persist(remainingPuzzles);
+
+        // Check if any other puzzles from this same game still exist
+        const otherPuzzlesFromGame = remainingPuzzles.some(p => p.gameId === gameId);
+
+        // If no puzzles are left for this game, remove the "Analyzed" record
+        if (!otherPuzzlesFromGame) {
+          const remainingRecords = this.getRecords().filter(r => r.gameId !== gameId);
+          this._persistRecords(remainingRecords);
         }
 
-        this._persist(items);
-
+        // UI Cleanup for active puzzle
         if (State.currentPuzzle?.id === targetId) {
           State.currentPuzzle = null;
           State.board.start();
@@ -771,11 +790,16 @@
 
       updateGameListStatus() {
         const puzzles = StorageController.getAll();
+        const records = StorageController.getRecords();
+
         Array.from(DOM.inputs.gameList.options).forEach(option => {
-          const { gameId, date, whiteName, blackName, wR, bR } = option.dataset;
-          const record = puzzles.find(puzzle => puzzle.gameId === gameId);
-          const statusPrefix = record ? (record.gain ? '+ ' : '- ') : '';
-          option.text = `${statusPrefix}${date}: ${whiteName} (${wR}) vs ${blackName} (${bR})`;
+          const { gameId } = option.dataset;
+          const hasBeenAnalyzed = records.some(r => r.gameId === gameId);
+          const hasPuzzles = puzzles.some(p => p.gameId === gameId);
+
+          // UI indicator: '+' if puzzles found, '-' if analyzed but clean, '' if untouched
+          const statusPrefix = hasPuzzles ? '+ ' : (hasBeenAnalyzed ? '- ' : '');
+          option.text = `${statusPrefix}${option.dataset.date}: ${option.dataset.whiteName} vs ${option.dataset.blackName}`;
         });
       },
 
@@ -985,9 +1009,12 @@
           }
 
           if (State.isAnalyzing) {
-            StorageController.save({
-              id: `comp-${gameId}-${depth}-${margin}`,
-              gameId, players: playersStr, gain: null, depth, margin, date, isCompletionRecord: true
+            StorageController.saveRecord({
+              gameId,
+              players: playersStr,
+              depth,
+              margin,
+              date
             });
             UIController.log(`COMPLETE: Checked ${history.length} moves.`, true);
           }
@@ -1218,19 +1245,32 @@
       },
 
       handleDownloadDatabase() {
-        const rawData = localStorage.getItem(StorageController.KEY);
-        if (!rawData) return console.error("No data found to backup!");
+        const puzzles = StorageController.getAll();
+        const records = StorageController.getRecords();
+
+        if (puzzles.length === 0 && records.length === 0) {
+          UIController.log("No data found to backup!");
+          return;
+        }
 
         try {
-          const jsonData = JSON.stringify(JSON.parse(rawData), null, 2);
+          const backupData = {
+            puzzles: puzzles,
+            records: records,
+            version: "2.0",
+            exportDate: new Date().toISOString()
+          };
+
+          const jsonData = JSON.stringify(backupData, null, 2);
           const blobUrl = URL.createObjectURL(new Blob([jsonData], { type: 'application/json' }));
 
           const link = document.createElement('a');
           link.href = blobUrl;
-          link.download = `blindspot_backup_${new Date().toISOString().slice(0, 10)}.json`;
+          link.download = `blindspot_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
           link.click();
 
           URL.revokeObjectURL(blobUrl);
+          UIController.log("Database exported successfully.");
         } catch (error) {
           UIController.log("Error formatting JSON: " + error.message);
         }
@@ -1243,24 +1283,34 @@
         const reader = new FileReader();
         reader.onload = ({ target }) => {
           try {
-            const importedData = JSON.parse(target.result);
-            if (!Array.isArray(importedData)) throw new Error("Invalid format.");
+            const imported = JSON.parse(target.result);
 
-            const existingData = StorageController.getAll();
-            const existingIds = new Set(existingData.map(puzzle => String(puzzle.id)));
+            // Handle both the new bundled format and the old array-only format
+            const importedPuzzles = Array.isArray(imported) ? imported : (imported.puzzles || []);
+            const importedRecords = imported.records || [];
 
-            const newItems = importedData.filter(puzzle => {
-              puzzle.id = String(puzzle.id);
-              return !existingIds.has(puzzle.id);
-            });
+            // Merge Puzzles
+            const existingPuzzles = StorageController.getAll();
+            const existingPuzzleIds = new Set(existingPuzzles.map(p => String(p.id)));
+            const newPuzzles = importedPuzzles.filter(p => !existingPuzzleIds.has(String(p.id)));
 
-            localStorage.setItem(StorageController.KEY, JSON.stringify([...existingData, ...newItems]));
+            // Merge Records
+            const existingRecords = StorageController.getRecords();
+            const existingRecordIds = new Set(existingRecords.map(r => r.gameId));
+            const newRecords = importedRecords.filter(r => !existingRecordIds.has(r.gameId));
 
-            UIController.log(`Imported ${newItems.length} new puzzles!`, true);
+            if (newPuzzles.length > 0) {
+              localStorage.setItem(StorageController.PUZZLE_KEY, JSON.stringify([...existingPuzzles, ...newPuzzles]));
+            }
+            if (newRecords.length > 0) {
+              localStorage.setItem(StorageController.RECORD_KEY, JSON.stringify([...existingRecords, ...newRecords]));
+            }
+
+            UIController.log(`Imported ${newPuzzles.length} puzzles and ${newRecords.length} records!`, true);
             UIController.renderSavedPuzzles();
             UIController.updateGameListStatus();
 
-            event.target.value = ''; // Reset input
+            event.target.value = '';
           } catch (error) {
             UIController.log(`Upload failed: ${error.message}`);
           }
