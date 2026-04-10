@@ -1003,8 +1003,7 @@
                 solution: GameLogic.convertPvToSan(
                   reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
                   reason === "BLINDSPOT" ? evaluationAfter.pv : evaluationBefore.pv
-                ),
-                isCompletionRecord: false
+                )
               });
             }
           }
