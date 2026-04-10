@@ -22,22 +22,22 @@ been missing.
 * enter your chess.com username in the field
 * load years and months of available archives
 * fetch games for specified year and month
-* click Batch All to analyze your games
+* click "Batch All" to analyze your games
 
 ## step 2, categorize
 
-Open each puzzle and click Solution to review it. If the sequence ends in an
-overly complicated position without a clear material or positional gain,
-categorize it as Too complex. You can return to these later after practicing
-more obvious tactics. Legitimate blunders from either you or your opponent
-should be categorized as Rotation.
+Open each puzzle and click "Solution" to review it. If the sequence ends in an
+overly complex position without a clear material or positional gain, categorize
+it as "Too complex". You can return to these later after practicing more obvious
+tactics. Legitimate blunders from either you or your opponent should be
+categorized as Rotation.
 
 ## step 3, practice
 
-Filter the view to show Rotation puzzles, sort by severity and begin practicing.
-Do not get discouraged if they seem difficult; they are specifically targeting
-your personal blind spots. Spend about a minute on each position. If you can't
-find the solution, click Hint to see which piece to move.
+Filter the view to show "Rotation" puzzles, sort by severity, and begin
+practicing. Do not get discouraged if they seem difficult; they are specifically
+targeting your personal blind spots. Spend about a minute on each position. If
+you can't find the solution, click Hint to see which piece to move.
 
 Calculation gets easier with practice; much like learning multiplication tables,
 it takes time before the answers come instantly. To understand why alternative
@@ -47,7 +47,7 @@ moves fail, copy the position's FEN, paste it into
 Make sure you understand the logic behind the solution, keeping in mind that
 some puzzles may offer multiple winning lines and do not require playing through
 to the very end. Once you have successfully solved a puzzle, move it to the
-Transit category. From there, you can move them back into Rotation in bulk,
+"Transit" category. From there, you can move them back into "Rotation" in bulk,
 ensuring the next puzzle appears at the top of your list for easier selection.
 
 ## step 4, overtraining
@@ -55,7 +55,7 @@ ensuring the next puzzle appears at the top of your list for easier selection.
 If you instantly recognize a puzzle and know the first few moves from memory
 without actively calculating, the puzzle has been overtrained. Rote memorization
 bypasses the calculation practice you need. If this happens, categorize it as
-Overtrained so you can set it aside. You can revisit this batch later when the
+"Overtrained" so you can set it aside. You can revisit this batch later when the
 specific positions may have faded from your memory.
 
 ## step 5, play long games
@@ -66,21 +66,18 @@ is better, the sweet spot for improvement is typically a 60-minute game.
 
 ## step 6, repeat
 
-After playing a new game, retrieve it using Fetch Games and run the analysis.
-Switch your filter back to Uncategorized and repeat the process from Step 1.
-Once all your active puzzles have been moved into the Rotation batch, filter for
-that and continue your training.
+After playing a new game, retrieve it using Fetch Games and do step 2.
 
-Eventually, most puzzles will become Overtrained. Periodically scan this
+Eventually, most puzzles will become "Overtrained". Periodically scan this
 category; if the first move no longer immediately "pops" into your mind from
-memory, move the puzzle back into Rotation.
+memory, move the puzzle back into "Rotation".
 
 ## step 7, advancing
 
-Review your Too Complex puzzles and move any that now offer an understandable
-advantage into the Rotation. For puzzles that remain difficult or lack a clear
-instructional benefit, move them to Transit first; once you have finished
-reviewing, you can move them back to Too Complex in bulk.
+Review your "Too Complex" puzzles and move any that now offer an understandable
+advantage "Rotation". For puzzles that remain difficult or lack a clear
+instructional benefit, move them to "Transit" first; once you have finished
+reviewing, you can move them back to "Too Complex" in bulk.
 
 ## openings
 
@@ -96,14 +93,17 @@ easier to remember and naturally reveal candidate moves.
 
 ## checklist
 
-It’s remarkable how many games at this level are decided simply by capturing a
-piece left en prise or a one move fork. Before committing to a move, visualize
-the piece on its new square and scan the board for potential captures. Reducing
-these types of blunders is often the most effective way to gain rating.
+It is remarkable how many games at this level are decided simply by a one-move
+fork or by capturing a piece left en prise. Before committing to a move,
+visualize the piece on its new square and scan the board for potential captures.
+Reducing these types of blunders is often the most effective way to gain rating.
 
-When your opponent makes a move, it helps to pause and ask what is being
-threatened. It’s also worth checking if the moved piece has discovered a
-previously blocked piece.
+When your opponent moves, pause and ask what is being threatened. It is also
+worth checking if the moved piece has discovered an attack from a previously
+blocked piece.
+
+Flip the board to view it from your opponent's perspective; try to determine
+what they are planning.
 
 A helpful way to structure your calculation is to prioritize CCT: Checks,
 Captures, and Threats.
@@ -113,8 +113,8 @@ Captures, and Threats.
 Going for a checkmate attack is often risky, as it usually requires sacrifices
 and very precise tactics. A safer strategy is to simply win a single pawn, then
 trade pieces until you reach an endgame where your extra pawn is winning.
-Learning to like these types of endings can feel a bit slow at first, but it
-becomes quite satisfying as you get the hang of them.
+Learning to appreciate these types of endings can feel a bit slow at first, but
+it becomes quite satisfying as you get the hang of them.
 
 Learn to activate your king and create passed pawns. Even theoretical draws
 often turn into a win at this level.
@@ -125,7 +125,7 @@ Realize that it is about the squares and how to control them using the pieces
 and pawns. Concepts such as weak squares and pawns are essential.
 
 * weak squares cannot be defended by pawns and can become outposts in your
-  opponents half of the board
+  opponent's half of the board
 * weak pawns cannot be protected by other pawns and become targets for your
   pieces
 
@@ -137,7 +137,7 @@ the absence of such a plan, improve the least active piece.
 If a piece exerts pressure on the opponent's position, it is active. If a piece
 has a solely defensive task or is blocked by its own pawns, it is passive.
 
-## finishing of a winning position
+## finishing a winning position
 
 Once you are up material, make safe moves that restrict your opponent's
 counterplay while solidifying and simplifying the position. Computers often
