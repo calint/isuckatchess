@@ -991,9 +991,10 @@
               const reason = isLosingAfter ? "BLINDSPOT" : "OPPORTUNITY";
               const gainValue = parseInt(evalDrop, 10);
               UIController.log(`✨ Found ${reason}: Move ${i + 1} (${evalDrop} CP)`);
+              const puzzleId = `${gameId}-m${i + 1}`;
 
               StorageController.save({
-                id: String(Date.now() + i),
+                id: puzzleId,
                 gameId, date, depth, margin, players: playersStr, side: userSide,
                 fen: reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
                 preBlunderFen: reason === "BLINDSPOT" ? fenBeforeMove : null,
