@@ -30,7 +30,7 @@ Open each puzzle and click "Solution" to review it. If the sequence ends in an
 overly complex position without a clear material or positional gain, categorize
 it as "Too complex". You can return to these later after practicing more obvious
 tactics. Legitimate blunders from either you or your opponent should be
-categorized as Rotation.
+categorized as "Rotation".
 
 ## step 3, practice
 
