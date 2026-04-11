@@ -46,9 +46,10 @@ moves fail, copy the position's FEN, paste it into
 
 Make sure you understand the logic behind the solution, keeping in mind that
 some puzzles may offer multiple winning lines and do not require playing through
-to the very end. Once you have successfully solved a puzzle, move it to the
-"Transit" category. From there, you can move them back into "Rotation" in bulk,
-ensuring the next puzzle appears at the top of your list for easier selection.
+to the very end or choosing the strongest line. Once you have successfully
+solved a puzzle, move it to the "Transit" category. From there, you can move
+them back into "Rotation" in bulk, ensuring the next puzzle appears at the top
+of your list for easier selection.
 
 ## step 4, overtraining
 
