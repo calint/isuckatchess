@@ -75,7 +75,7 @@ memory, move the puzzle back into "Rotation".
 ## step 7, advancing
 
 Review your "Too Complex" puzzles and move any that now offer an understandable
-advantage "Rotation". For puzzles that remain difficult or lack a clear
+advantage to "Rotation". For puzzles that remain difficult or lack a clear
 instructional benefit, move them to "Transit" first; once you have finished
 reviewing, you can move them back to "Too Complex" in bulk.
 

@@ -1334,19 +1334,19 @@
       },
 
       handleBulkMove() {
-        const newCat = DOM.inputs.bulkCategory.value;
-        const currentFilter = DOM.inputs.categoryFilter.value; // Get current source
-        if (!newCat) {
-          alert("Select destination category.");
-          return;
-        }
-
         // Identify IDs of puzzles currently rendered in the DOM
         const visibleIds = Array.from(DOM.display.puzzles.querySelectorAll('.puzzle-clickable'))
           .map(el => el.dataset.id);
 
         if (visibleIds.length === 0) {
           alert("No puzzles to move.");
+          return;
+        }
+
+        const newCat = DOM.inputs.bulkCategory.value;
+        const currentFilter = DOM.inputs.categoryFilter.value; // Get current source
+        if (!newCat) {
+          alert("Select destination category.");
           return;
         }
 
