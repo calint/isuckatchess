@@ -841,7 +841,10 @@
           StorageController.markSolved(puzzle.id);
         };
 
-        if (State.trainingGame.game_over()) return setComplete();
+        if (State.trainingGame.game_over()) {
+          setComplete();
+          return;
+        }
 
         State.board.position(State.trainingGame.fen());
         const { score } = await EngineController.evaluate(State.trainingGame.fen(), 10);
