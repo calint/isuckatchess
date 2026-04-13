@@ -148,15 +148,41 @@ fastest.
 
 Do not lash out.
 
-## additional tools
+## additional resources
 
 lichess.org
 
 The free tier at chess.com provides a daily allotted set of puzzles in various
 formats; these are excellent for a quick pre-game warm-up.
 
-A highly recommended puzzle book is Lev Alburt's Chess Training Pocket Book. It
-contains beautiful positions from real games that provide "aha!" and "wow"
-moments. Again, don't be discouraged if they seem difficult; do not spend more
-than a couple of minutes on a position before looking at the hint. Once
-finished, repeat the book, skipping the puzzles you have overtrained.
+A highly recommended puzzle book is Lev Alburt’s Chess Training Pocket Book. It
+contains beautiful positions from real games that provide "aha!" and "wow!"
+moments. Don’t be discouraged if they seem difficult; avoid spending more than a
+couple of minutes on a position before looking at the hint, but do spend time
+understanding the tactical elements — deflections, forks, pins, skewers, weak
+back ranks etc. After finding the solution, try to visualize the pieces moving
+in your mind’s eye.
+
+## about time
+
+Improving as an adult is a massive time commitment; a standard 60-minute game
+can stretch into an intense two-hour session. Ideally, the training tool
+generates personalized puzzles from each game, but when that stops, you have
+reached a crossroads: you can either lower the engine threshold to find obscure,
+computer-like appreciation of positions, or accept that you have "leveled up".
+You have stopped blundering and are actively punishing your opponents' mistakes.
+
+Because of this, your rating now lags behind your actual skill. To bridge that
+gap, you simply have to play and not lose. It is a slow, steady climb; at a
+realistic gain of 5 points per day, it takes a full month of consistency to
+level up.
+
+Solving ten tactical exercises — spending a couple of minutes on each — takes
+about 30 minutes, including savoring those satisfying "aha!" moments of
+visualizing the solutions. While the progress is fulfilling, the pressure to
+increase the rating can make daily games feel like a chore. I often find that
+once a game starts I am fully immersed, yet I still feel anxious before pressing
+the "challenge" button.
+
+Lately, I have found myself enjoying Lev Alburt’s puzzle book more than actual
+games.
