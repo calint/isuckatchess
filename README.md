@@ -159,9 +159,8 @@ A highly recommended puzzle book is Lev Alburt’s Chess Training Pocket Book. I
 contains beautiful positions from real games that provide "aha!" and "wow!"
 moments. Don’t be discouraged if they seem difficult; avoid spending more than a
 couple of minutes on a position before looking at the hint, but do spend time
-understanding the tactical elements — deflections, forks, pins, skewers, weak
-back ranks etc. After finding the solution, try to visualize the pieces moving
-in your mind’s eye.
+understanding the tactical elements. After finding the solution, try to
+visualize the pieces moving in your mind’s eye.
 
 ## about time
 
