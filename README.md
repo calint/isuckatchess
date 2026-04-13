@@ -200,7 +200,7 @@ high-stakes moments, opting for safe, solid play is often more practical than
 chasing a risky brilliancy. Training with a strict two-minute limit per puzzle
 is designed to simulate this restricted time available over the board.
 
-My goal is 'whole-board vision': the ability to see pieces glide across the
+My goal is "whole-board vision": the ability to see pieces glide across the
 board’s topography of varying square strengths as effortlessly as moving my own
 fingers. Currently, my process remains manual — consciously placing one foot in
 front of the other — rather than moving by instinct. While such mastery may be
