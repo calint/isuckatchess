@@ -152,7 +152,7 @@ Do not lash out.
 
 lichess.org
 
-The free tier at Chess.com provides a daily allotted set of puzzles in various
+The free tier at chess.com provides a daily allotted set of puzzles in various
 formats; these are excellent for a quick pre-game warm-up.
 
 A highly recommended puzzle book is Lev Alburt's Chess Training Pocket Book. It
