@@ -147,3 +147,16 @@ Manage your time and choose the simplest and safest way to a win, not the
 fastest.
 
 Do not lash out.
+
+## additional tools
+
+lichess.org
+
+The free tier at Chess.com provides a daily allotted set of puzzles in various
+formats; these are excellent for a quick pre-game warm-up.
+
+A highly recommended puzzle book is Lev Alburt's Chess Training Pocket Book. It
+contains beautiful positions from real games that provide "aha!" and "wow"
+moments. Again, don't be discouraged if they seem difficult; do not spend more
+than a couple of minutes on a position before looking at the hint. Once
+finished, repeat the book, skipping the puzzles you have overtrained.
