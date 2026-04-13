@@ -181,7 +181,7 @@ about 30 minutes, including savoring those satisfying "aha!" moments of
 visualizing the solutions. While the progress is fulfilling, the pressure to
 increase the rating can make daily games feel like a chore. I often find that
 once a game starts I am fully immersed, yet I still feel anxious before pressing
-the "challenge" button.
+the "Start Game" button.
 
 Lately, I have found myself enjoying Lev Alburt’s puzzle book more than actual
 games.
