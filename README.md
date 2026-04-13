@@ -188,15 +188,19 @@ games.
 
 ## additional thoughts
 
-In a 60-minute game consisting of roughly 30 moves, there is an average of two
-minutes per move. However, if you are struggling with the opening, a single move
-might require five minutes of evaluation. Complex tactical "hairy" combinations
-— where a miscalculation spells disaster — can easily demand five to ten
-minutes.
+In a 60-minute game averaging 30 moves, you have roughly two minutes per move.
+An opponent’s thinking time is a vital bonus; it offers a chance to "flip the
+board" and mentally inhabit your opponent’s side, searching for the most
+punishing ways to attack your own position.
 
-In these high-stakes moments, opting for safe, solid play is often more
-practical than chasing a risky brilliancy. The goal of training with one to two
-minutes per puzzle is to simulate this limited time available over the board.
+However, a difficult opening can easily stretch a single move’s evaluation to
+five minutes. Likewise, "hairy" tactical combinations—where one miscalculation
+spells disaster — can demand ten minutes of deep calculation. In these
+high-stakes moments, opting for safe, solid play is often more practical than
+chasing a risky brilliancy. Training with a strict two-minute limit per puzzle
+is designed to simulate this restricted time available over the board.
 
-On my wishlist is "whole-board vision" — the ability to fully visualize the
-board and execute moves as clearly as if I were playing on a physical set.
+Ultimately, my goal is to achieve "whole-board vision": the ability to visualize
+the entire board and execute moves as intuitively as if I were playing on a
+physical set. It is a remarkably difficult skill to master even with an actual
+board.
