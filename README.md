@@ -185,3 +185,18 @@ the "Start Game" button.
 
 Lately, I have found myself enjoying Lev Alburt’s puzzle book more than actual
 games.
+
+## additional thoughts
+
+In a 60-minute game consisting of roughly 30 moves, there is an average of two
+minutes per move. However, if you are struggling with the opening, a single move
+might require five minutes of evaluation. Complex tactical "hairy" combinations
+— where a miscalculation spells disaster — can easily demand five to ten
+minutes.
+
+In these high-stakes moments, opting for safe, solid play is often more
+practical than chasing a risky brilliancy. The goal of training with one to two
+minutes per puzzle is to simulate this limited time available over the board.
+
+On my wishlist is "whole-board vision" — the ability to fully visualize the
+board and execute moves as clearly as if I were playing on a physical set.
