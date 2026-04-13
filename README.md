@@ -200,8 +200,10 @@ high-stakes moments, opting for safe, solid play is often more practical than
 chasing a risky brilliancy. Training with a strict two-minute limit per puzzle
 is designed to simulate this restricted time available over the board.
 
-My goal is "whole-board vision": the ability to see pieces glide across the
-board’s topography of varying square strengths as effortlessly as moving my own
-fingers. Currently, my process remains manual — consciously placing one foot in
-front of the other — rather than moving by instinct. While such mastery may be
-elusive for most adult learners, it remains a compelling vision to chase.
+My goal is "whole-board vision": the ability to sense the board’s topography—the
+varying pressures and strengths of the squares — as effortlessly as my hands
+feel the texture of a physical surface. I want a weak square at d5 to feel like
+a sinkhole, and an overprotected piece to feel as if it is towering over the
+board. Currently, my process remains manual: left foot in front of right, then
+right in front of left. While such instinctive mastery is elusive, it remains at
+the top of my wishlist.
