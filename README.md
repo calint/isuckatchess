@@ -189,7 +189,7 @@ games.
 ## additional thoughts
 
 In a 60-minute game averaging 30 moves, you have roughly two minutes per move.
-An opponent’s thinking time is a vital bonus; it offers a chance to "flip the
+The opponent’s thinking time is a vital bonus; it offers a chance to "flip the
 board" and mentally inhabit your opponent’s side, searching for the most
 punishing ways to attack your own position.
 
@@ -200,8 +200,8 @@ high-stakes moments, opting for safe, solid play is often more practical than
 chasing a risky brilliancy. Training with a strict two-minute limit per puzzle
 is designed to simulate this restricted time available over the board.
 
-My goal is "whole-board vision": the ability to sense the board’s topography—the
-varying pressures and strengths of the squares — as effortlessly as my hands
+My goal is "whole-board vision": the ability to sense the board’s topography —
+the varying pressures and strengths of the squares — as effortlessly as my hands
 feel the texture of a physical surface. I want a weak square at d5 to feel like
 a sinkhole, and an overprotected piece to feel as if it is towering over the
 board. Currently, my process remains manual: left foot in front of right, then
