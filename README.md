@@ -206,3 +206,6 @@ squares — as effortlessly as my hands feel the texture of a physical surface. 
 weak square at d5 should feel like a sinkhole; an overprotected piece should
 feel as if it is towering over the board. Currently, my process remains manual:
 left foot in front of right, then right in front of left.
+
+Building intuition is a Catch-22: finding combinations builds intuition, yet
+finding them requires it. The process is a spiraling ascent toward better chess.
