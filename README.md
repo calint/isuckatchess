@@ -153,7 +153,7 @@ Do not lash out.
 lichess.org
 
 The free tier at chess.com provides a daily allotted set of puzzles in various
-formats; these are excellent for a quick pre-game warm-up.
+formats; these are good warmup for a pre-game warm-up.
 
 A highly recommended puzzle book is Lev Alburt’s Chess Training Pocket Book. It
 contains beautiful positions from real games that provide "aha!" and "wow!"
