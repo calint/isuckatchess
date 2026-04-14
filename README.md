@@ -189,9 +189,9 @@ games.
 ## additional thoughts
 
 In a 60-minute game averaging 30 moves, you have roughly two minutes per move.
-The opponent’s thinking time is a vital bonus; it offers a chance to "flip the
-board" and mentally inhabit your opponent’s side, searching for the most
-punishing ways to attack your own position.
+The opponent’s thinking time can be used to "flip the board" and mentally
+inhabit your opponent’s side, searching for the most punishing ways to attack
+your own position.
 
 However, a difficult opening can easily stretch a single move’s evaluation to
 five minutes. Likewise, "hairy" tactical combinations—where one miscalculation
