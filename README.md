@@ -197,8 +197,8 @@ However, a difficult opening can easily stretch a single move’s evaluation to
 five minutes. Likewise, "hairy" tactical combinations—where one miscalculation
 spells disaster — can demand ten minutes of deep calculation. In these
 high-stakes moments, opting for safe, solid play is often more practical than
-chasing a risky brilliancy. Training with a strict two-minute limit per puzzle
-is designed to simulate this restricted time available over the board.
+chasing a risky brilliancy. Training with a two-minute limit per puzzle is
+designed to simulate this restricted time available over the board.
 
 My goal is "whole-board vision": the ability to sense the board’s topography —
 the varying pressures and strengths of the squares — as effortlessly as my hands
