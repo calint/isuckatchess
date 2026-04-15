@@ -200,12 +200,13 @@ high-stakes moments, opting for safe, solid play is often more practical than
 chasing a risky brilliancy. Training with a two-minute limit per puzzle
 simulates the restricted time available over the board.
 
-My goal is "whole-board vision": a mental map as clear as a diagram. I want to
-sense the board’s topography — the shifting pressures and strengths of the
-squares — as effortlessly as my hands feel the texture of a physical surface. A
-weak square at d5 should feel like a sinkhole; an overprotected piece should
-feel as if it is towering over the board. Currently, my process remains manual:
-left foot in front of right, then right in front of left.
+On my wishlist is "whole-board vision": a mental map as clear as a diagram. I
+would like to sense the board’s topography — the shifting pressures and
+strengths of the squares — as effortlessly as my hands feel the texture of a
+physical surface. A weak square at d5 should feel like a sinkhole; an
+overprotected piece should feel as if it is towering over the board. Currently,
+my process remains manual: left foot in front of right, then right in front of
+left.
 
 Building intuition is a Catch-22: finding combinations builds intuition, yet
 finding them requires it. The process is a spiraling ascent toward better chess.
