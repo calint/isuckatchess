@@ -164,8 +164,8 @@ visualize the pieces moving in your mind’s eye.
 
 ## about time
 
-Improving as an adult is a massive time commitment; a standard 60-minute game
-can stretch into an intense two-hour session. Ideally, the training tool
+Improving as an adult is a considerable time commitment; a standard 60-minute
+game can stretch into an intense two-hour session. Ideally, the training tool
 generates personalized puzzles from each game, but when that stops, you have
 reached a crossroads: you can either lower the engine threshold to find obscure,
 computer-like appreciation of positions, or accept that you have "leveled up".
