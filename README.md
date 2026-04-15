@@ -194,7 +194,7 @@ inhabit your opponent’s side, searching for the most punishing ways to attack
 your own position.
 
 However, a difficult opening can easily stretch a single move’s evaluation to
-five minutes. Likewise, "hairy" tactical combinations—where one miscalculation
+five minutes. Likewise, "hairy" tactical combinations — where one miscalculation
 spells disaster — can demand ten minutes of deep calculation. In these
 high-stakes moments, opting for safe, solid play is often more practical than
 chasing a risky brilliancy. Training with a two-minute limit per puzzle
