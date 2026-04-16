@@ -4,7 +4,7 @@ https://calint.github.io/isuckatchess/
 
 ## intention
 
-Most games at this level are decided by blunders—specifically, players missing
+Most games at this level are decided by blunders — specifically, players missing
 the opportunity to capitalize on each other's mistakes. Spotting two- and three-
 move tactics can be practiced through exercises that develop pattern
 recognition, and there is no better place to start than with your own games.
