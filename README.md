@@ -37,7 +37,7 @@ categorized as "Rotation".
 Filter the view to show "Rotation" puzzles, sort by severity, and begin
 practicing. Do not get discouraged if they seem difficult; they are specifically
 targeting your personal blind spots. Spend about a minute on each position. If
-you can't find the solution, click Hint to see which piece to move.
+you can't find the solution, click "Hint" to see which piece to move.
 
 Calculation gets easier with practice; much like learning multiplication tables,
 it takes time before the answers come instantly. To understand why alternative
@@ -63,11 +63,11 @@ specific positions may have faded from your memory.
 
 To effectively apply your training, play with a time control that allows you to
 think deeply about each move. A 10-minute game is too fast, and while 30 minutes
-is better, the sweet spot for improvement is typically a 60-minute game.
+is better, the sweet spot for improvement seems to be 60-minute game.
 
 ## step 6, repeat
 
-After playing a new game, retrieve it using Fetch Games and do step 2.
+After playing a new game, retrieve it using "Fetch Games" and do step 2.
 
 Eventually, most puzzles will become "Overtrained". Periodically scan this
 category; if the first move no longer immediately "pops" into your mind from
@@ -159,8 +159,8 @@ A highly recommended puzzle book is Lev Alburt’s Chess Training Pocket Book. I
 contains beautiful positions from real games that provide "aha!" and "wow!"
 moments. Don’t be discouraged if they seem difficult; avoid spending more than a
 couple of minutes on a position before looking at the hint, but do spend time
-understanding the tactical elements. After finding the solution, try to
-visualize the pieces moving in your mind’s eye.
+understanding the tactical motifs. After finding the solution, try to visualize
+the pieces moving in your mind’s eye.
 
 ## about time
 
