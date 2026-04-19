@@ -511,7 +511,7 @@
       engine: null,
       board: null,
       currentPuzzle: null,
-      trainingGame: new Chess(),
+      chess: new Chess(),
       isBatchRunning: false,
       isAnalyzing: false,
       currentAnimationId: 0
@@ -841,17 +841,17 @@
           StorageController.markSolved(puzzle.id);
         };
 
-        if (State.trainingGame.game_over()) {
+        if (State.chess.game_over()) {
           setComplete();
           return;
         }
 
-        State.board.position(State.trainingGame.fen());
-        const { score } = await EngineController.evaluate(State.trainingGame.fen(), 10);
+        State.board.position(State.chess.fen());
+        const { score } = await EngineController.evaluate(State.chess.fen(), 10);
         UIController.updateEvalBar(score);
 
         const solutionMoves = puzzle.solution.split(" ");
-        const currentMoveCount = State.trainingGame.history().length;
+        const currentMoveCount = State.chess.history().length;
 
         if (currentMoveCount >= solutionMoves.length) {
           setComplete();
@@ -878,22 +878,22 @@
 
       handleMoveDrop(source, target) {
         const solutionMoves = State.currentPuzzle.solution.split(" ");
-        const historyLength = State.trainingGame.history().length;
+        const historyLength = State.chess.history().length;
 
-        const tempGame = new Chess(State.trainingGame.fen());
+        const tempGame = new Chess(State.chess.fen());
         const attemptedMove = tempGame.move({ from: source, to: target, promotion: 'q' });
 
         if (!attemptedMove || attemptedMove.san !== solutionMoves[historyLength]) return 'snapback';
 
-        State.trainingGame.move(attemptedMove.san);
+        State.chess.move(attemptedMove.san);
 
-        if (State.trainingGame.game_over() || State.trainingGame.history().length >= solutionMoves.length) {
+        if (State.chess.game_over() || State.chess.history().length >= solutionMoves.length) {
           return UIController.updateTrainingStatus();
         }
 
         // Play opponent's response automatically
         setTimeout(() => {
-          State.trainingGame.move(solutionMoves[State.trainingGame.history().length]);
+          State.chess.move(solutionMoves[State.chess.history().length]);
           UIController.updateTrainingStatus();
         }, 500);
       },
@@ -901,7 +901,7 @@
       loadPuzzle(puzzle) {
         State.currentAnimationId++;
         State.currentPuzzle = puzzle;
-        State.trainingGame.load(puzzle.fen);
+        State.chess.load(puzzle.fen);
 
         const isBlunder = puzzle.reason === "BLINDSPOT";
         DOM.display.puzzleHeader.style.display = 'block';
@@ -1175,22 +1175,22 @@
       },
 
       handleStepBack() {
-        State.trainingGame.undo();
-        State.trainingGame.undo();
+        State.chess.undo();
+        State.chess.undo();
         UIController.updateTrainingStatus();
       },
 
       async handleStepForward() {
         const solutionMoves = State.currentPuzzle?.solution.split(" ");
-        let currentMoveIndex = State.trainingGame.history().length;
+        let currentMoveIndex = State.chess.history().length;
 
         if (solutionMoves && currentMoveIndex < solutionMoves.length) {
-          State.trainingGame.move(solutionMoves[currentMoveIndex]);
-          State.board.position(State.trainingGame.fen());
+          State.chess.move(solutionMoves[currentMoveIndex]);
+          State.board.position(State.chess.fen());
 
           if (++currentMoveIndex < solutionMoves.length) {
             await new Promise(resolve => setTimeout(resolve, 600));
-            State.trainingGame.move(solutionMoves[currentMoveIndex]);
+            State.chess.move(solutionMoves[currentMoveIndex]);
           }
           UIController.updateTrainingStatus();
         }
@@ -1198,10 +1198,10 @@
 
       handleShowHint() {
         const solutionMoves = State.currentPuzzle?.solution.split(" ");
-        const currentMoveIndex = State.trainingGame.history().length;
+        const currentMoveIndex = State.chess.history().length;
 
         if (solutionMoves && currentMoveIndex < solutionMoves.length) {
-          const moveData = new Chess(State.trainingGame.fen()).move(solutionMoves[currentMoveIndex]);
+          const moveData = new Chess(State.chess.fen()).move(solutionMoves[currentMoveIndex]);
           if (moveData) {
             const pieceNames = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
             DOM.display.hint.innerHTML = `<strong>Hint:</strong> Move the <u>${pieceNames[moveData.piece] || 'piece'}</u> on <strong>${moveData.from}</strong>`;
@@ -1214,7 +1214,7 @@
         if (!puzzle) return;
 
         const animId = ++State.currentAnimationId;
-        State.trainingGame.load(puzzle.fen);
+        State.chess.load(puzzle.fen);
 
         UIController.updateTrainingStatus();
         UIController.updateEvalBar(0);
@@ -1232,7 +1232,7 @@
         if (!puzzle) return;
 
         const currentAnimId = ++State.currentAnimationId;
-        State.trainingGame.load(puzzle.fen);
+        State.chess.load(puzzle.fen);
         State.board.position(puzzle.fen, false);
         await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -1240,8 +1240,8 @@
           // Break loop if the puzzle changed or reset was clicked
           if (State.currentPuzzle.id !== puzzle.id || currentAnimId !== State.currentAnimationId) return;
 
-          if (State.trainingGame.move(move)) {
-            State.board.position(State.trainingGame.fen());
+          if (State.chess.move(move)) {
+            State.board.position(State.chess.fen());
             await UIController.updateTrainingStatus();
           }
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1249,7 +1249,7 @@
       },
 
       handleCopyFen() {
-        navigator.clipboard.writeText(State.trainingGame.fen()).then(() => {
+        navigator.clipboard.writeText(State.chess.fen()).then(() => {
           const btn = DOM.buttons.copyFen;
           const originalText = btn.textContent;
           btn.textContent = "Copied!";
