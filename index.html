@@ -510,11 +510,11 @@
     const State = {
       engine: null,
       board: null,
-      currentPuzzle: null,
+      puzzle: null,
       chess: new Chess(),
       isBatchRunning: false,
       isAnalyzing: false,
-      currentAnimationId: 0
+      animationId: 0
     };
 
     const DOM = {};
@@ -631,8 +631,8 @@
         }
 
         // UI Cleanup for active puzzle
-        if (State.currentPuzzle?.id === targetId) {
-          State.currentPuzzle = null;
+        if (State.puzzle?.id === targetId) {
+          State.puzzle = null;
           State.board.start();
           DOM.display.hint.textContent = "Select a puzzle...";
           DOM.display.puzzleHeader.style.display = 'none';
@@ -833,7 +833,7 @@
       },
 
       async updateTrainingStatus() {
-        const puzzle = State.currentPuzzle;
+        const puzzle = State.puzzle;
         if (!puzzle) return;
 
         const setComplete = () => {
@@ -877,7 +877,7 @@
       },
 
       handleMoveDrop(source, target) {
-        const solutionMoves = State.currentPuzzle.solution.split(" ");
+        const solutionMoves = State.puzzle.solution.split(" ");
         const historyLength = State.chess.history().length;
 
         const tempGame = new Chess(State.chess.fen());
@@ -899,8 +899,8 @@
       },
 
       loadPuzzle(puzzle) {
-        State.currentAnimationId++;
-        State.currentPuzzle = puzzle;
+        State.animationId++;
+        State.puzzle = puzzle;
         State.chess.load(puzzle.fen);
 
         const isBlunder = puzzle.reason === "BLINDSPOT";
@@ -1092,9 +1092,9 @@
         });
 
         DOM.display.classifyControls.addEventListener('click', e => {
-          if (e.target.dataset.category && State.currentPuzzle) {
-            StorageController.setCategory(State.currentPuzzle.id, e.target.dataset.category);
-            State.currentPuzzle.category = e.target.dataset.category;
+          if (e.target.dataset.category && State.puzzle) {
+            StorageController.setCategory(State.puzzle.id, e.target.dataset.category);
+            State.puzzle.category = e.target.dataset.category;
           }
         });
       },
@@ -1181,7 +1181,7 @@
       },
 
       async handleStepForward() {
-        const solutionMoves = State.currentPuzzle?.solution.split(" ");
+        const solutionMoves = State.puzzle?.solution.split(" ");
         let currentMoveIndex = State.chess.history().length;
 
         if (solutionMoves && currentMoveIndex < solutionMoves.length) {
@@ -1197,7 +1197,7 @@
       },
 
       handleShowHint() {
-        const solutionMoves = State.currentPuzzle?.solution.split(" ");
+        const solutionMoves = State.puzzle?.solution.split(" ");
         const currentMoveIndex = State.chess.history().length;
 
         if (solutionMoves && currentMoveIndex < solutionMoves.length) {
@@ -1210,10 +1210,10 @@
       },
 
       handleResetPuzzle() {
-        const puzzle = State.currentPuzzle;
+        const puzzle = State.puzzle;
         if (!puzzle) return;
 
-        const animId = ++State.currentAnimationId;
+        const animId = ++State.animationId;
         State.chess.load(puzzle.fen);
 
         UIController.updateTrainingStatus();
@@ -1221,24 +1221,24 @@
 
         if (puzzle.reason === "BLINDSPOT" && puzzle.preBlunderFen) {
           State.board.position(puzzle.preBlunderFen, false);
-          if (State.currentAnimationId === animId) State.board.position(puzzle.fen, true);
+          if (State.animationId === animId) State.board.position(puzzle.fen, true);
         } else {
           State.board.position(puzzle.fen, false);
         }
       },
 
       async handleShowSolution() {
-        const puzzle = State.currentPuzzle;
+        const puzzle = State.puzzle;
         if (!puzzle) return;
 
-        const currentAnimId = ++State.currentAnimationId;
+        const currentAnimId = ++State.animationId;
         State.chess.load(puzzle.fen);
         State.board.position(puzzle.fen, false);
         await new Promise(resolve => setTimeout(resolve, 100));
 
         for (const move of puzzle.solution.split(" ")) {
           // Break loop if the puzzle changed or reset was clicked
-          if (State.currentPuzzle.id !== puzzle.id || currentAnimId !== State.currentAnimationId) return;
+          if (State.puzzle.id !== puzzle.id || currentAnimId !== State.animationId) return;
 
           if (State.chess.move(move)) {
             State.board.position(State.chess.fen());
