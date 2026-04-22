@@ -1,6 +1,6 @@
 # blind spot trainer
 
-https://calint.github.io/isuckatchess/
+<https://calint.github.io/isuckatchess/>
 
 ## intention
 
@@ -210,3 +210,4 @@ left.
 
 Building intuition is a Catch-22: finding combinations builds intuition, yet
 finding them requires it. The process is a spiraling ascent toward better chess.
+
