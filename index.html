@@ -789,7 +789,7 @@
           const hasPuzzles = puzzles.some(p => p.gameId === gameId);
 
           // UI indicator: '+' if puzzles found, '-' if analyzed but clean, '' if untouched
-          const statusPrefix = hasPuzzles ? '+ ' : (hasBeenAnalyzed ? '- ' : '');
+          const statusPrefix = hasBeenAnalyzed ? '✓ ' : '';
           option.text = `${statusPrefix}${option.dataset.date}: ${option.dataset.whiteName} vs ${option.dataset.blackName}`;
         });
       },
