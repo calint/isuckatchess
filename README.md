@@ -208,6 +208,11 @@ overprotected piece should feel as if it is towering over the board. Currently,
 my process remains manual: left foot in front of right, then right in front of
 left.
 
+The second wish is the intuition of piece placement for better coordination.
+Occasionally, a certain clarity arises, allowing the pieces to form coherent,
+strong positions through what feels like easy, natural moves. More often,
+however, a lack of harmony results in ugly, contorted positions.
+
 Building intuition is a Catch-22: finding combinations builds intuition, yet
 finding them requires it. The process is a spiraling ascent toward better chess.
 
