@@ -996,9 +996,8 @@
               continue;
             }
 
-            const reason = isPlayerTurn ? "OPPORTUNITY" : "BLINDSPOT";
             const gainValue = parseInt(evalDrop, 10);
-            UIController.log(`* Found ${reason}: Move ${i + 1} (${evalDrop} CP)`);
+            UIController.log(`* Move ${i + 1} (${evalDrop} CP)`);
             const puzzleId = `${gameId}-m${i + 1}`;
 
             // Generate the blindspot puzzle
