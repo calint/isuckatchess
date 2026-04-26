@@ -935,9 +935,11 @@
           }
 
           const game = new Chess();
-          if (!game.load_pgn(pgn)) return UIController.log("ERROR: Could not parse PGN.");
+          if (!game.load_pgn(pgn)) {
+            return UIController.log("ERROR: Could not parse PGN.");
+          }
 
-          const userSide = blackName.toLowerCase() === DOM.inputs.player.value.toLowerCase() ? 'black' : 'white';
+          const userSide = whiteName.toLowerCase() === DOM.inputs.player.value.toLowerCase() ? 'white' : 'black';
           const history = game.history({ verbose: true });
           const tracker = new Chess();
 
@@ -945,18 +947,26 @@
           State.board.position('start');
 
           for (let i = 0; i < history.length; i++) {
-            if (isBatch && !State.isBatchRunning) break;
-            if (!State.isAnalyzing) return UIController.log("Analysis aborted by user.");
+            if (isBatch && !State.isBatchRunning) {
+              break;
+            }
+
+            if (!State.isAnalyzing) {
+              return UIController.log("Analysis aborted by user.");
+            }
 
             DOM.display.hint.innerHTML = `
               <div class="progress-game">Game ${progressLabel}</div>
               <div class="progress-player">${playersStr}</div>
               <small>Move ${i + 1}/${history.length} (${Math.round(((i + 1) / history.length) * 100)}%)</small>`;
 
-            if (tracker.game_over()) break;
+            if (tracker.game_over()) {
+              break;
+            }
 
             const fenBeforeMove = tracker.fen();
             const currentTurnColor = tracker.turn() === 'w' ? 'white' : 'black';
+            const isPlayerTurn = currentTurnColor === userSide;
             const evaluationBefore = await EngineController.evaluate(fenBeforeMove, depth);
 
             tracker.move(history[i]);
@@ -975,31 +985,41 @@
 
             const perspectiveSign = currentTurnColor === 'white' ? 1 : -1;
             const evalDrop = perspectiveSign * (evaluationBefore.score - evaluationAfter.score);
-
-            const isPlayerTurn = currentTurnColor === userSide;
+            const moveLAN = history[i].from + history[i].to + (history[i].promotion || "");
+            const madeBestMove = (evaluationBefore.best === moveLAN);
             const isSignificantDrop = evalDrop >= margin;
-            const wasWinningBefore = perspectiveSign * evaluationBefore.score >= margin;
-            const isLosingAfter = perspectiveSign * evaluationAfter.score < margin;
 
-            if (isPlayerTurn && isSignificantDrop && (wasWinningBefore || isLosingAfter)) {
-              const reason = isLosingAfter ? "BLINDSPOT" : "OPPORTUNITY";
-              const gainValue = parseInt(evalDrop, 10);
-              UIController.log(`✨ Found ${reason}: Move ${i + 1} (${evalDrop} CP)`);
-              const puzzleId = `${gameId}-m${i + 1}`;
+            console.log(`${i}: ${evaluationBefore.score} -> ${evaluationAfter.score} : ${evalDrop}   ${isPlayerTurn}   ${madeBestMove}`);
 
-              StorageController.save({
-                id: puzzleId,
-                gameId, date, depth, margin, players: playersStr, side: userSide,
-                fen: reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
-                preBlunderFen: reason === "BLINDSPOT" ? fenBeforeMove : null,
-                gain: gainValue,
-                reason,
-                solution: GameLogic.convertPvToSan(
-                  reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
-                  reason === "BLINDSPOT" ? evaluationAfter.pv : evaluationBefore.pv
-                )
-              });
+            if (!isPlayerTurn) {
+              continue;
             }
+
+            if (!isSignificantDrop) {
+              continue;
+            }
+
+            if (madeBestMove) {
+              continue;
+            }
+
+            const reason = isPlayerTurn ? "OPPORTUNITY" : "BLINDSPOT";
+            const gainValue = parseInt(evalDrop, 10);
+            UIController.log(`* Found ${reason}: Move ${i + 1} (${evalDrop} CP)`);
+            const puzzleId = `${gameId}-m${i + 1}`;
+
+            StorageController.save({
+              id: puzzleId,
+              gameId, date, depth, margin, players: playersStr, side: userSide,
+              fen: reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
+              preBlunderFen: reason === "BLINDSPOT" ? fenBeforeMove : null,
+              gain: gainValue,
+              reason,
+              solution: GameLogic.convertPvToSan(
+                reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
+                reason === "BLINDSPOT" ? evaluationAfter.pv : evaluationBefore.pv
+              )
+            });
           }
 
           if (State.isAnalyzing) {
