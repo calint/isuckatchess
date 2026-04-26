@@ -14,6 +14,7 @@
       --green: #2e7d32;
       --blue: #1565c0;
       --orange: #f57c00;
+      --yellow: #809516;
       --red: #c62828;
       --black: #000000;
       --slate: #455a64;
@@ -206,6 +207,10 @@
 
     .btn-orange {
       background: var(--orange);
+    }
+
+    .btn-yellow {
+      background: var(--yellow);
     }
 
     .btn-black {
@@ -448,6 +453,7 @@
         <span class="classify-label">Classify:</span>
         <button data-category="1" class="btn-classify btn-green grow-1">Rotation</button>
         <button data-category="3" class="btn-classify btn-orange grow-1">Overtrained</button>
+        <button data-category="4" class="btn-classify btn-yellow grow-1">Irrelevant</button>
         <button data-category="5" class="btn-classify btn-red grow-1">Too complex</button>
         <button data-category="6" class="btn-classify btn-black grow-1">Transit</button>
       </div>
@@ -458,6 +464,7 @@
           <option value="All">All</option>
           <option value="1">Rotation</option>
           <option value="3">Overtrained</option>
+          <option value="4">Irrelevant</option>
           <option value="5">Too complex</option>
           <option value="6">Transit</option>
           <option value="None">Unclassified</option>
@@ -473,6 +480,7 @@
             <option value="" disabled selected>Move filtered to...</option>
             <option value="1">Rotation</option>
             <option value="3">Overtrained</option>
+            <option value="4">Irrelevant</option>
             <option value="5">Too complex</option>
           </select>
           <button id="btnBulkMove" class="btn-sm btn-slate" style="width: auto; padding: 0.2rem 0.5rem;">Apply</button>
@@ -489,6 +497,7 @@
     const CATEGORIES = {
       '1': 'Rotation',
       '3': 'Overtrained',
+      '4': 'Irrelevant',
       '5': 'Too Complex',
       '6': 'Transit'
     };
@@ -539,13 +548,14 @@
         const isBlunder = puzzle.reason === 'BLINDSPOT';
         const icon = isBlunder ? '[?]' : '[!]';
         const title = isBlunder ? 'Blunder' : 'Missed Opportunity';
+        const gainText = puzzle.gain > 10000 ? (isBlunder ? "avoid mate" : "mate") : puzzle.gain;
 
         return `
           <div class="puzzle-item ${puzzle.solved ? 'solved' : ''}">
             <div class="puzzle-row">
               <div class="puzzle-clickable" data-id="${puzzle.id}">
                 <strong><span class="type-icon" title="${title}">${icon}</span>${puzzle.players}</strong>${badge}<br>
-                <small>${puzzle.date} | Gain: ${puzzle.gain} | Depth: ${puzzle.depth} | Threshold: ${puzzle.margin}</small>
+                <small>${puzzle.date} | Gain: ${gainText} | Depth: ${puzzle.depth} | Threshold: ${puzzle.margin}</small>
               </div>
               <button data-delete-id="${puzzle.id}" class="btn-delete">Delete</button>
             </div>
@@ -891,10 +901,11 @@
         State.chess.load(puzzle.fen);
 
         const isBlunder = puzzle.reason === "BLINDSPOT";
+        const gainText = puzzle.gain > 10000 ? (isBlunder ? "avoid  mate" : "mate") : ("improve by " + puzzle.gain);
         DOM.display.puzzleHeader.style.display = 'block';
         DOM.display.phPlayers.textContent = puzzle.players;
         DOM.display.phMeta.textContent = `${puzzle.date} | Perspective: ${puzzle.side.toUpperCase()}`;
-        DOM.display.phEval.textContent = isBlunder ? `Opportunity for opponent to gain ${puzzle.gain}.` : `Missed opportunity to improve position by ${puzzle.gain}.`;
+        DOM.display.phEval.textContent = isBlunder ? `Opportunity for opponent to ${gainText}.` : `Missed opportunity to ${gainText}.`;
 
         const startFen = (isBlunder && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
 
