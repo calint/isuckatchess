@@ -30,8 +30,9 @@ Open each puzzle and click "Solution" to review it. If the sequence ends in an
 overly complex position without a clear material or positional gain, categorize
 it as "Too complex". You can return to these later after practicing more obvious
 tactics. Legitimate blunders from either you or your opponent should be
-categorized as "Rotation". Categorize as "Irrelevant" if the puzzle does not
-make sense.
+categorized as "Rotation". Finally, categorize as "Irrelevant" if the puzzle
+lacks logic or if the computer suggests a murky line in a winning position that
+diverges from the safest path to the win.
 
 ## step 3, practice
 
