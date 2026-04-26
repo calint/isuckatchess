@@ -902,6 +902,7 @@
 
         const isBlunder = puzzle.reason === "BLINDSPOT";
         const gainText = puzzle.gain > 10000 ? "mate" : `improve by ${puzzle.gain}`;
+
         DOM.display.puzzleHeader.style.display = 'block';
         DOM.display.phPlayers.textContent = puzzle.players;
         DOM.display.phMeta.textContent = `${puzzle.date} | Perspective: ${puzzle.side.toUpperCase()}`;
