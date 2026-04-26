@@ -548,14 +548,14 @@
         const isBlunder = puzzle.reason === 'BLINDSPOT';
         const icon = isBlunder ? '[?]' : '[!]';
         const title = isBlunder ? 'Blunder' : 'Missed Opportunity';
-        const gainText = puzzle.gain > 10000 ? (isBlunder ? "avoid mate" : "mate") : puzzle.gain;
+        const gainText = puzzle.gain > 10000 ? "mate" : puzzle.gain;
 
         return `
           <div class="puzzle-item ${puzzle.solved ? 'solved' : ''}">
             <div class="puzzle-row">
               <div class="puzzle-clickable" data-id="${puzzle.id}">
                 <strong><span class="type-icon" title="${title}">${icon}</span>${puzzle.players}</strong>${badge}<br>
-                <small>${puzzle.date} | Evaluation: ${gainText} CP | Depth: ${puzzle.depth} | Threshold: ${puzzle.margin}</small>
+                <small>${puzzle.date} | Evaluation: ${gainText} | Depth: ${puzzle.depth} | Threshold: ${puzzle.margin}</small>
               </div>
               <button data-delete-id="${puzzle.id}" class="btn-delete">Delete</button>
             </div>
