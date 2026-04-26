@@ -955,7 +955,7 @@
           const history = game.history({ verbose: true });
           const tracker = new Chess();
 
-          const plyEvals = [];
+          const plyEvaluationHistory = [];
 
           State.board.orientation(userSide);
           State.board.position('start');
@@ -981,9 +981,10 @@
             const fenBeforeMove = tracker.fen();
             const currentTurnColor = tracker.turn() === 'w' ? 'white' : 'black';
             const isPlayerTurn = currentTurnColor === userSide;
+            const perspectiveSign = currentTurnColor === 'white' ? 1 : -1;
             const evaluationBeforeMove = await EngineController.evaluate(fenBeforeMove, depth);
 
-            plyEvals.push(evaluationBeforeMove.score);
+            plyEvaluationHistory.push(perspectiveSign * evaluationBeforeMove.score);
 
             tracker.move(history[i]);
 
@@ -1004,7 +1005,6 @@
               continue;
             }
 
-            const perspectiveSign = currentTurnColor === 'white' ? 1 : -1;
             const evalDrop = perspectiveSign * (evaluationBeforeMove.score - evaluationAfterMove.score);
             const isSignificantDrop = evalDrop >= margin;
 
@@ -1014,9 +1014,9 @@
 
             let opportunityGain = 0;
             if (i > 0) {
-              opportunityGain = parseInt(perspectiveSign * (plyEvals[i] - plyEvals[i - 1]), 10);
+              opportunityGain = parseInt(plyEvaluationHistory[i] - plyEvaluationHistory[i - 1], 10);
             } else {
-              opportunityGain = parseInt(perspectiveSign * plyEvals[i], 10); // Fallback for move 1
+              opportunityGain = parseInt(plyEvaluationHistory[i], 10); // Fallback for move 1
             }
 
             const blindspotGain = parseInt(evalDrop, 10);
