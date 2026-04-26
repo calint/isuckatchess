@@ -1011,20 +1011,6 @@
             UIController.log(`* Move ${i + 1} (${evalDrop} CP)`);
             const puzzleId = `${gameId}-m${i + 1}`;
 
-            // Generate the blindspot puzzle
-            StorageController.save({
-              reason: "BLINDSPOT",
-              id: puzzleId + "-blindspot",
-              gameId, date, depth, margin, players: playersStr, side: userSide,
-              fen: tracker.fen(),
-              preBlunderFen: fenBeforeMove,
-              gain: gainValue,
-              solution: GameLogic.convertPvToSan(
-                tracker.fen(),
-                evaluationAfter.pv
-              )
-            });
-
             // Generate the opportunity puzzle
             StorageController.save({
               reason: "OPPORTUNITY",
@@ -1036,6 +1022,20 @@
               solution: GameLogic.convertPvToSan(
                 fenBeforeMove,
                 evaluationBefore.pv
+              )
+            });
+
+            // Generate the blindspot puzzle
+            StorageController.save({
+              reason: "BLINDSPOT",
+              id: puzzleId + "-blindspot",
+              gameId, date, depth, margin, players: playersStr, side: userSide,
+              fen: tracker.fen(),
+              preBlunderFen: fenBeforeMove,
+              gain: gainValue,
+              solution: GameLogic.convertPvToSan(
+                tracker.fen(),
+                evaluationAfter.pv
               )
             });
 
