@@ -717,7 +717,7 @@
               const mateMatch = data.match(/score mate (-?\d+)/);
               if (mateMatch) {
                 const moves = parseInt(mateMatch[1], 10);
-                lastScore = (moves >= 0 ? 20000 : -20000) * sideMultiplier;
+                lastScore = (moves >= 0 ? 100000 : -100000) * sideMultiplier;
                 if (moves === 0) lastScore = 100000;
               }
 
@@ -970,6 +970,7 @@
             const evaluationBefore = await EngineController.evaluate(fenBeforeMove, depth);
 
             tracker.move(history[i]);
+
             State.board.position(tracker.fen(), true);
 
             let evaluationAfter;
@@ -983,23 +984,15 @@
 
             UIController.updateEvalBar(evaluationAfter.score);
 
-            const perspectiveSign = currentTurnColor === 'white' ? 1 : -1;
-            const evalDrop = perspectiveSign * (evaluationBefore.score - evaluationAfter.score);
-            const moveLAN = history[i].from + history[i].to + (history[i].promotion || "");
-            const madeBestMove = (evaluationBefore.best === moveLAN);
-            const isSignificantDrop = evalDrop >= margin;
-
-            console.log(`${i}: ${evaluationBefore.score} -> ${evaluationAfter.score} : ${evalDrop}   ${isPlayerTurn}   ${madeBestMove}`);
-
             if (!isPlayerTurn) {
               continue;
             }
 
-            if (!isSignificantDrop) {
-              continue;
-            }
+            const perspectiveSign = currentTurnColor === 'white' ? 1 : -1;
+            const evalDrop = perspectiveSign * (evaluationBefore.score - evaluationAfter.score);
+            const isSignificantDrop = evalDrop >= margin;
 
-            if (madeBestMove) {
+            if (!isSignificantDrop) {
               continue;
             }
 
@@ -1008,18 +1001,34 @@
             UIController.log(`* Found ${reason}: Move ${i + 1} (${evalDrop} CP)`);
             const puzzleId = `${gameId}-m${i + 1}`;
 
+            // Generate the blindspot puzzle
             StorageController.save({
-              id: puzzleId,
+              reason: "BLINDSPOT",
+              id: puzzleId + "-blindspot",
               gameId, date, depth, margin, players: playersStr, side: userSide,
-              fen: reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
-              preBlunderFen: reason === "BLINDSPOT" ? fenBeforeMove : null,
+              fen: tracker.fen(),
+              preBlunderFen: fenBeforeMove,
               gain: gainValue,
-              reason,
               solution: GameLogic.convertPvToSan(
-                reason === "BLINDSPOT" ? tracker.fen() : fenBeforeMove,
-                reason === "BLINDSPOT" ? evaluationAfter.pv : evaluationBefore.pv
+                tracker.fen(),
+                evaluationAfter.pv
               )
             });
+
+            // Generate the opportunity puzzle
+            StorageController.save({
+              reason: "OPPORTUNITY",
+              id: puzzleId + "-opportunity",
+              gameId, date, depth, margin, players: playersStr, side: userSide,
+              fen: fenBeforeMove,
+              preBlunderFen: null,
+              gain: gainValue,
+              solution: GameLogic.convertPvToSan(
+                fenBeforeMove,
+                evaluationBefore.pv
+              )
+            });
+
           }
 
           if (State.isAnalyzing) {
