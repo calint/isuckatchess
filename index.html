@@ -555,7 +555,7 @@
             <div class="puzzle-row">
               <div class="puzzle-clickable" data-id="${puzzle.id}">
                 <strong><span class="type-icon" title="${title}">${icon}</span>${puzzle.players}</strong>${badge}<br>
-                <small>${puzzle.date} | Gain: ${gainText} | Depth: ${puzzle.depth} | Threshold: ${puzzle.margin}</small>
+                <small>${puzzle.date} | Evaluation: ${gainText} CP | Depth: ${puzzle.depth} | Threshold: ${puzzle.margin}</small>
               </div>
               <button data-delete-id="${puzzle.id}" class="btn-delete">Delete</button>
             </div>
@@ -901,11 +901,11 @@
         State.chess.load(puzzle.fen);
 
         const isBlunder = puzzle.reason === "BLINDSPOT";
-        const gainText = puzzle.gain > 10000 ? (isBlunder ? "avoid  mate" : "mate") : ("improve by " + puzzle.gain);
+        const gainText = puzzle.gain > 10000 ? "mate" : `improve by ${puzzle.gain}`;
         DOM.display.puzzleHeader.style.display = 'block';
         DOM.display.phPlayers.textContent = puzzle.players;
         DOM.display.phMeta.textContent = `${puzzle.date} | Perspective: ${puzzle.side.toUpperCase()}`;
-        DOM.display.phEval.textContent = isBlunder ? `Opportunity for opponent to ${gainText}.` : `Missed opportunity to ${gainText}.`;
+        DOM.display.phEval.textContent = isBlunder ? `Show opponent moves after missed opportunity to ${gainText}.` : `Show moves to ${gainText}.`;
 
         const startFen = (isBlunder && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
 
