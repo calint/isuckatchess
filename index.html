@@ -906,7 +906,7 @@
         DOM.display.puzzleHeader.style.display = 'block';
         DOM.display.phPlayers.textContent = puzzle.players;
         DOM.display.phMeta.textContent = `${puzzle.date} | Perspective: ${puzzle.side.toUpperCase()}`;
-        DOM.display.phEval.textContent = isBlunder ? `Show opponent moves after missed opportunity to ${gainText}.` : `Show moves to ${gainText}.`;
+        DOM.display.phEval.textContent = isBlunder ? `Show opponent moves to ${gainText}.` : `Show moves to ${gainText}.`;
 
         const startFen = (isBlunder && puzzle.preBlunderFen) ? puzzle.preBlunderFen : puzzle.fen;
 
@@ -955,6 +955,8 @@
           const history = game.history({ verbose: true });
           const tracker = new Chess();
 
+          const plyEvals = [];
+
           State.board.orientation(userSide);
           State.board.position('start');
 
@@ -979,36 +981,46 @@
             const fenBeforeMove = tracker.fen();
             const currentTurnColor = tracker.turn() === 'w' ? 'white' : 'black';
             const isPlayerTurn = currentTurnColor === userSide;
-            const evaluationBefore = await EngineController.evaluate(fenBeforeMove, depth);
+            const evaluationBeforeMove = await EngineController.evaluate(fenBeforeMove, depth);
+
+            plyEvals.push(evaluationBeforeMove.score);
 
             tracker.move(history[i]);
 
             State.board.position(tracker.fen(), true);
 
-            let evaluationAfter;
+            let evaluationAfterMove;
             if (tracker.in_checkmate()) {
-              evaluationAfter = { score: tracker.turn() === 'b' ? 100000 : -100000, pv: "" };
+              evaluationAfterMove = { score: tracker.turn() === 'b' ? 100000 : -100000, pv: "" };
             } else if (tracker.in_draw() || tracker.in_stalemate()) {
-              evaluationAfter = { score: 0, pv: "" };
+              evaluationAfterMove = { score: 0, pv: "" };
             } else {
-              evaluationAfter = await EngineController.evaluate(tracker.fen(), depth);
+              evaluationAfterMove = await EngineController.evaluate(tracker.fen(), depth);
             }
 
-            UIController.updateEvalBar(evaluationAfter.score);
+            UIController.updateEvalBar(evaluationAfterMove.score);
 
             if (!isPlayerTurn) {
               continue;
             }
 
             const perspectiveSign = currentTurnColor === 'white' ? 1 : -1;
-            const evalDrop = perspectiveSign * (evaluationBefore.score - evaluationAfter.score);
+            const evalDrop = perspectiveSign * (evaluationBeforeMove.score - evaluationAfterMove.score);
             const isSignificantDrop = evalDrop >= margin;
 
             if (!isSignificantDrop) {
               continue;
             }
 
-            const gainValue = parseInt(evalDrop, 10);
+            let opportunityGain = 0;
+            if (i > 0) {
+              opportunityGain = parseInt(perspectiveSign * (plyEvals[i] - plyEvals[i - 1]), 10);
+            } else {
+              opportunityGain = parseInt(perspectiveSign * plyEvals[i], 10); // Fallback for move 1
+            }
+
+            const blindspotGain = parseInt(evalDrop, 10);
+
             UIController.log(`* Move ${i + 1} (${evalDrop} CP)`);
             const puzzleId = `${gameId}-m${i + 1}`;
 
@@ -1019,10 +1031,10 @@
               gameId, date, depth, margin, players: playersStr, side: userSide,
               fen: fenBeforeMove,
               preBlunderFen: null,
-              gain: gainValue,
+              gain: opportunityGain,
               solution: GameLogic.convertPvToSan(
                 fenBeforeMove,
-                evaluationBefore.pv
+                evaluationBeforeMove.pv
               )
             });
 
@@ -1033,10 +1045,10 @@
               gameId, date, depth, margin, players: playersStr, side: userSide,
               fen: tracker.fen(),
               preBlunderFen: fenBeforeMove,
-              gain: gainValue,
+              gain: blindspotGain,
               solution: GameLogic.convertPvToSan(
                 tracker.fen(),
-                evaluationAfter.pv
+                evaluationAfterMove.pv
               )
             });
 
