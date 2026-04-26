@@ -1019,14 +1019,13 @@
               gameId, date, depth, margin, players: playersStr, side: userSide,
               fen: fenBeforeMove,
               preBlunderFen: null,
-              gain: gainValue,
+              gain: evalDrop,
               solution: GameLogic.convertPvToSan(
                 fenBeforeMove,
                 evaluationBefore.pv
               )
             });
 
-            /*
             // Generate the blindspot puzzle
             StorageController.save({
               reason: "BLINDSPOT",
@@ -1040,7 +1039,6 @@
                 evaluationAfter.pv
               )
             });
-          */
 
           }
 
