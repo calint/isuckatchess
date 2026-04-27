@@ -1006,9 +1006,8 @@
             }
 
             const evalDrop = perspectiveSign * (evaluationBeforeMove.score - evaluationAfterMove.score);
-            const isSignificantDrop = evalDrop >= margin;
 
-            if (!isSignificantDrop) {
+            if (!evalDrop >= margin) {
               continue;
             }
 
